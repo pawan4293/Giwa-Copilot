@@ -99,6 +99,25 @@ export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "get_activity",
+      description:
+        "Get real on-chain Scheduler activity (Deposited/Released/Cancelled events) for a wallet address on GIWA Sepolia. " +
+        "This is the closest thing to 'transaction history' this app can show — it does not include unrelated wallet transfers, only Scheduler contract events.",
+      parameters: {
+        type: "object",
+        properties: {
+          address: {
+            type: "string",
+            description: "The 0x wallet address to check",
+          },
+        },
+        required: ["address"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "cancel_schedule",
       description:
         "Cancel an existing schedule by ID. The owner receives a refund of all unpaid ETH. " +
@@ -149,6 +168,15 @@ export async function executeTool(
         );
         const data = await res.json();
         if (data.error) return `Error fetching balance: ${data.error}`;
+        return JSON.stringify(data);
+      }
+
+      case "get_activity": {
+        const res = await fetch(
+          `${baseUrl}/api/activity?address=${encodeURIComponent(String(args.address))}&type=logs`
+        );
+        const data = await res.json();
+        if (data.error) return `Error fetching activity: ${data.error}`;
         return JSON.stringify(data);
       }
 
