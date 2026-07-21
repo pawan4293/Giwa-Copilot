@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGrokClient, GROK_MODEL, FALLBACK_MODEL, SYSTEM_PROMPT } from "@/lib/grokClient";
+import { getGrokClient, GROK_MODEL, FALLBACK_MODELS, SYSTEM_PROMPT } from "@/lib/grokClient";
 import { TOOLS, executeTool } from "@/lib/tools";
 import type OpenAI from "openai";
 
@@ -37,27 +37,33 @@ export async function POST(req: NextRequest) {
     while (rounds < MAX_TOOL_ROUNDS) {
       rounds++;
 
+      const modelsToTry = [GROK_MODEL, ...FALLBACK_MODELS];
       let response;
-      try {
-        response = await client.chat.completions.create({
-          model: GROK_MODEL,
-          messages: conversation,
-          tools: TOOLS,
-          tool_choice: "auto",
-        });
-      } catch (toolErr) {
-        const msg = toolErr instanceof Error ? toolErr.message : String(toolErr);
-        if (msg.includes("Failed to call a function") || msg.includes("failed_generation")) {
+      let lastErr: unknown;
+
+      for (const model of modelsToTry) {
+        try {
           response = await client.chat.completions.create({
-            model: FALLBACK_MODEL,
+            model,
             messages: conversation,
             tools: TOOLS,
             tool_choice: "auto",
           });
-        } else {
-          throw toolErr;
+          break;
+        } catch (err) {
+          lastErr = err;
+          const msg = err instanceof Error ? err.message : String(err);
+          const isRetryable =
+            msg.includes("Failed to call a function") ||
+            msg.includes("failed_generation") ||
+            msg.includes("429") ||
+            msg.includes("Rate limit");
+          if (!isRetryable) throw err;
+          // otherwise try the next model in the list
         }
       }
+
+      if (!response) throw lastErr;
 
       const choice = response.choices[0];
       if (!choice) break;
