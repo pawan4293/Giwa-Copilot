@@ -73,8 +73,14 @@ export async function POST(req: NextRequest) {
 
       const toolCalls = assistantMsg.tool_calls;
       if (choice.finish_reason === "stop" || !toolCalls || toolCalls.length === 0) {
+        // Strip any leaked raw function-call syntax the model might still print
+        const cleanContent = (assistantMsg.content ?? "").replace(
+          /\(?function=[a-zA-Z_]+\)?\s*(\{[\s\S]*?\})?\s*(<\/function>)?/g,
+          ""
+        ).trim();
+
         return NextResponse.json({
-          content: assistantMsg.content ?? "",
+          content: cleanContent,
           toolCallsMade: rounds - 1,
           pendingAction,
         });
