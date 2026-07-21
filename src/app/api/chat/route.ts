@@ -91,9 +91,9 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
 
-    if (message.includes("XAI_API_KEY")) {
+    if (message.includes("GROQ_API_KEY")) {
       return NextResponse.json(
-        { error: "XAI_API_KEY is not configured. Please add it to your environment variables." },
+        { error: "GROQ_API_KEY is not configured. Please add it to your environment variables." },
         { status: 503 }
       );
     }

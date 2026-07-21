@@ -1,20 +1,20 @@
 import OpenAI from "openai";
 
-// xAI Grok — OpenAI-compatible API
-// Base URL: https://api.x.ai/v1
-// Key: XAI_API_KEY environment variable
+// Groq — OpenAI-compatible API (free tier)
+// Base URL: https://api.groq.com/openai/v1
+// Key: GROQ_API_KEY environment variable
 export function getGrokClient(): OpenAI {
-  const apiKey = process.env.XAI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    throw new Error("XAI_API_KEY is not set");
+    throw new Error("GROQ_API_KEY is not set");
   }
   return new OpenAI({
     apiKey,
-    baseURL: "https://api.x.ai/v1",
+    baseURL: "https://api.groq.com/openai/v1",
   });
 }
 
-export const GROK_MODEL = "grok-3-mini";
+export const GROK_MODEL = "llama-3.3-70b-versatile";
 
 export const SYSTEM_PROMPT = `You are GIWA Copilot, an AI assistant for the GIWA Sepolia testnet (OP Stack L2, chain ID 91342).
 
