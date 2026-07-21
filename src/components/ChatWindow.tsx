@@ -65,6 +65,29 @@ export function ChatWindow() {
     displayName: string;
     amountEth: string;
   }>({ isOpen: false, to: "", displayName: "", amountEth: "" });
+  const [sendCompleted, setSendCompleted] = useState(false);
+
+  const appendSystemMessage = (content: string) => {
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content, id: crypto.randomUUID() },
+    ]);
+  };
+
+  const handleSendSuccess = (txHash: string) => {
+    setSendCompleted(true);
+    appendSystemMessage(
+      `✅ Payment sent successfully.\nTo: ${sendModal.to}\nAmount: ${sendModal.amountEth} ETH (testnet — no real value)\nHash: ${txHash} [↗](https://sepolia-explorer.giwa.io/tx/${txHash})`
+    );
+  };
+
+  const handleSendModalClose = () => {
+    if (!sendCompleted) {
+      appendSystemMessage("❌ You cancelled the payment. Nothing was sent.");
+    }
+    setSendCompleted(false);
+    setSendModal((s) => ({ ...s, isOpen: false }));
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -291,7 +314,8 @@ export function ChatWindow() {
 
       <TxConfirmModal
         isOpen={sendModal.isOpen}
-        onClose={() => setSendModal((s) => ({ ...s, isOpen: false }))}
+        onClose={handleSendModalClose}
+        onSuccess={handleSendSuccess}
         to={sendModal.to}
         displayName={sendModal.displayName}
         amountEth={sendModal.amountEth}
