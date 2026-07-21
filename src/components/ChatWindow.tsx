@@ -129,16 +129,7 @@ export function ChatWindow() {
   };
 
   return (
-    <div className="flex flex-col h-full relative">
-      {messages.length > 0 && (
-        <button
-          onClick={clearChat}
-          title="Clear chat"
-          className="absolute top-3 right-4 z-10 text-white/30 hover:text-red-400 transition-colors text-lg"
-        >
-          🗑️
-        </button>
-      )}
+    <div className="flex flex-col h-full">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 scrollbar-thin">
         <AnimatePresence initial={false}>
@@ -241,6 +232,14 @@ export function ChatWindow() {
       {/* Input */}
       <div className="border-t border-white/10 p-4">
         <div className="flex gap-3 items-end max-w-3xl mx-auto">
+          <button
+            onClick={clearChat}
+            title="Clear chat"
+            disabled={messages.length === 0}
+            className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-2xl border border-white/15 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+          >
+            🗑️
+          </button>
           <textarea
             ref={inputRef}
             value={input}
