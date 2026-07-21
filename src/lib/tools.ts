@@ -64,6 +64,33 @@ export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "send_eth",
+      description:
+        "Prepare a one-time ETH transfer for the user to confirm and sign. This does NOT send anything by itself — " +
+        "it only opens a confirmation dialog. Always call resolve_name first if the recipient is a .up.id name.",
+      parameters: {
+        type: "object",
+        properties: {
+          to: {
+            type: "string",
+            description: "Resolved 0x recipient address",
+          },
+          displayName: {
+            type: "string",
+            description: "The .up.id name or address as typed by the user, shown for confirmation",
+          },
+          amountEth: {
+            type: "string",
+            description: "Amount of ETH to send, e.g. '0.001'",
+          },
+        },
+        required: ["to", "displayName", "amountEth"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_schedule",
       description:
         "Create a recurring payment schedule on the GIWA Sepolia Scheduler contract. " +
@@ -205,6 +232,15 @@ export async function executeTool(
         const data = await res.json();
         if (data.error) return `Error fetching activity: ${data.error}`;
         return JSON.stringify(data);
+      }
+
+      case "send_eth": {
+        return JSON.stringify({
+          action: "open_send_modal",
+          to: args.to,
+          displayName: args.displayName,
+          amountEth: args.amountEth,
+        });
       }
 
       case "create_schedule": {

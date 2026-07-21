@@ -127,6 +127,14 @@ export function ChatWindow() {
         if (parsed.action === "open_schedule_form") {
           window.location.href = `/schedule?prefill=${encodeURIComponent(JSON.stringify(parsed.params))}`;
         }
+        if (parsed.action === "open_send_modal") {
+          setSendModal({
+            isOpen: true,
+            to: parsed.to,
+            displayName: parsed.displayName,
+            amountEth: parsed.amountEth,
+          });
+        }
       } catch {
         // Not JSON — normal text response
       }
