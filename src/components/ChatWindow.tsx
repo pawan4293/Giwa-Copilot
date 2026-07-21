@@ -122,21 +122,17 @@ export function ChatWindow() {
 
       setMessages((prev) => [...prev, assistantMsg]);
 
-      try {
-        const parsed = JSON.parse(data.content);
-        if (parsed.action === "open_schedule_form") {
-          window.location.href = `/schedule?prefill=${encodeURIComponent(JSON.stringify(parsed.params))}`;
-        }
-        if (parsed.action === "open_send_modal") {
-          setSendModal({
-            isOpen: true,
-            to: parsed.to,
-            displayName: parsed.displayName,
-            amountEth: parsed.amountEth,
-          });
-        }
-      } catch {
-        // Not JSON — normal text response
+      const action = data.pendingAction;
+      if (action?.action === "open_schedule_form") {
+        window.location.href = `/schedule?prefill=${encodeURIComponent(JSON.stringify(action.params))}`;
+      }
+      if (action?.action === "open_send_modal") {
+        setSendModal({
+          isOpen: true,
+          to: action.to,
+          displayName: action.displayName,
+          amountEth: action.amountEth,
+        });
       }
     } catch (e) {
       setError("Network error. Please try again.");

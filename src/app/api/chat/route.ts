@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     ];
 
     let rounds = 0;
+    let pendingAction: Record<string, unknown> | null = null;
 
     while (rounds < MAX_TOOL_ROUNDS) {
       rounds++;
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           content: assistantMsg.content ?? "",
           toolCallsMade: rounds - 1,
+          pendingAction,
         });
       }
 
@@ -83,6 +85,14 @@ export async function POST(req: NextRequest) {
           }
 
           const result = await executeTool(fn.name, args, baseUrl);
+
+          if (fn.name === "send_eth" || fn.name === "create_schedule" || fn.name === "cancel_schedule") {
+            try {
+              pendingAction = JSON.parse(result);
+            } catch {
+              // ignore
+            }
+          }
 
           return {
             role: "tool" as const,
