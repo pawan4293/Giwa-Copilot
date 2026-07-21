@@ -65,55 +65,72 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const fromBlock = BigInt(0);
+    const CHUNK_SIZE = BigInt(99000); // stay under the 100k RPC limit
+    const latestBlock = await publicClient.getBlockNumber();
+    const addr = address as `0x${string}`;
 
-    // Deposited events where this address is the owner
-    const depositedLogs = await publicClient.getLogs({
-      address: schedulerAddress,
-      event:   depositedEvent,
-      args:    { owner: address as `0x${string}` },
-      fromBlock,
-      toBlock: "latest" as const,
-    });
+    const depositedLogs: Awaited<ReturnType<typeof publicClient.getLogs>> = [];
+    for (let from = BigInt(0); from <= latestBlock; from += CHUNK_SIZE + BigInt(1)) {
+      const to = from + CHUNK_SIZE > latestBlock ? latestBlock : from + CHUNK_SIZE;
+      depositedLogs.push(
+        ...(await publicClient.getLogs({
+          address: schedulerAddress,
+          event: depositedEvent,
+          args: { owner: addr },
+          fromBlock: from,
+          toBlock: to,
+        }))
+      );
+    }
 
-    // Released events where this address is the recipient
-    const releasedLogs = await publicClient.getLogs({
-      address: schedulerAddress,
-      event:   releasedEvent,
-      args:    { recipient: address as `0x${string}` },
-      fromBlock,
-      toBlock: "latest" as const,
-    });
+    const releasedLogs: Awaited<ReturnType<typeof publicClient.getLogs>> = [];
+    for (let from = BigInt(0); from <= latestBlock; from += CHUNK_SIZE + BigInt(1)) {
+      const to = from + CHUNK_SIZE > latestBlock ? latestBlock : from + CHUNK_SIZE;
+      releasedLogs.push(
+        ...(await publicClient.getLogs({
+          address: schedulerAddress,
+          event: releasedEvent,
+          args: { recipient: addr },
+          fromBlock: from,
+          toBlock: to,
+        }))
+      );
+    }
 
-    // Cancelled events where this address is the owner
-    const cancelledLogs = await publicClient.getLogs({
-      address: schedulerAddress,
-      event:   cancelledEvent,
-      args:    { owner: address as `0x${string}` },
-      fromBlock,
-      toBlock: "latest" as const,
-    });
+    const cancelledLogs: Awaited<ReturnType<typeof publicClient.getLogs>> = [];
+    for (let from = BigInt(0); from <= latestBlock; from += CHUNK_SIZE + BigInt(1)) {
+      const to = from + CHUNK_SIZE > latestBlock ? latestBlock : from + CHUNK_SIZE;
+      cancelledLogs.push(
+        ...(await publicClient.getLogs({
+          address: schedulerAddress,
+          event: cancelledEvent,
+          args: { owner: addr },
+          fromBlock: from,
+          toBlock: to,
+        }))
+      );
+    }
 
     const events = [
       ...depositedLogs.map((log) => ({
         type:        "Deposited",
         txHash:      log.transactionHash,
         blockNumber: log.blockNumber?.toString() ?? "0",
-        args:        serializeArgs(log.args as Record<string, unknown>),
+        args:        serializeArgs((log as unknown as { args: Record<string, unknown> }).args),
         explorerUrl: `https://sepolia-explorer.giwa.io/tx/${log.transactionHash}`,
       })),
       ...releasedLogs.map((log) => ({
         type:        "Released",
         txHash:      log.transactionHash,
         blockNumber: log.blockNumber?.toString() ?? "0",
-        args:        serializeArgs(log.args as Record<string, unknown>),
+        args:        serializeArgs((log as unknown as { args: Record<string, unknown> }).args),
         explorerUrl: `https://sepolia-explorer.giwa.io/tx/${log.transactionHash}`,
       })),
       ...cancelledLogs.map((log) => ({
         type:        "Cancelled",
         txHash:      log.transactionHash,
         blockNumber: log.blockNumber?.toString() ?? "0",
-        args:        serializeArgs(log.args as Record<string, unknown>),
+        args:        serializeArgs((log as unknown as { args: Record<string, unknown> }).args),
         explorerUrl: `https://sepolia-explorer.giwa.io/tx/${log.transactionHash}`,
       })),
     ].sort((a, b) => {
