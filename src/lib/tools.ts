@@ -1,0 +1,176 @@
+import type OpenAI from "openai";
+
+// Tool definitions for Grok function-calling
+// Each tool maps to a real API route — no synthetic data is ever returned
+
+export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "resolve_name",
+      description:
+        "Resolve a .up.id Upbit Web3 Name to a wallet address via ENS on Ethereum Sepolia L1. " +
+        "Always call this before proposing any send transaction.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "The .up.id name to resolve, e.g. 'alice.up.id'",
+          },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "check_verified",
+      description:
+        "Check whether a wallet address has a valid Verified Address attestation " +
+        "(Dojang / Upbit Korea KYC) on GIWA Sepolia. Returns a real boolean from on-chain.",
+      parameters: {
+        type: "object",
+        properties: {
+          address: {
+            type: "string",
+            description: "The 0x wallet address to check",
+          },
+        },
+        required: ["address"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_balance",
+      description:
+        "Get the live ETH balance of a wallet address on GIWA Sepolia (chain ID 91342). " +
+        "Returns the real balance fetched from the RPC — never a cached or estimated value.",
+      parameters: {
+        type: "object",
+        properties: {
+          address: {
+            type: "string",
+            description: "The 0x wallet address to check",
+          },
+        },
+        required: ["address"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_schedule",
+      description:
+        "Create a recurring payment schedule on the GIWA Sepolia Scheduler contract. " +
+        "This prepares the schedule parameters — the user must sign the actual deposit transaction client-side.",
+      parameters: {
+        type: "object",
+        properties: {
+          recipient: {
+            type: "string",
+            description: "Recipient wallet address (0x…) or resolved .up.id",
+          },
+          amountPerReleaseEth: {
+            type: "string",
+            description: "ETH amount to send each interval, e.g. '0.01'",
+          },
+          intervalSeconds: {
+            type: "number",
+            description: "Seconds between each release, e.g. 86400 for daily",
+          },
+          occurrences: {
+            type: "number",
+            description: "Total number of releases to schedule",
+          },
+          endsAt: {
+            type: "number",
+            description: "Unix timestamp of hard deadline (after which no releases occur)",
+          },
+        },
+        required: ["recipient", "amountPerReleaseEth", "intervalSeconds", "occurrences", "endsAt"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cancel_schedule",
+      description:
+        "Cancel an existing schedule by ID. The owner receives a refund of all unpaid ETH. " +
+        "This is an on-chain operation — the user must sign the cancel transaction client-side.",
+      parameters: {
+        type: "object",
+        properties: {
+          scheduleId: {
+            type: "string",
+            description: "The numeric schedule ID to cancel",
+          },
+        },
+        required: ["scheduleId"],
+      },
+    },
+  },
+];
+
+// Execute a tool call and return a string result
+export async function executeTool(
+  name: string,
+  args: Record<string, unknown>,
+  baseUrl: string
+): Promise<string> {
+  try {
+    switch (name) {
+      case "resolve_name": {
+        const res = await fetch(
+          `${baseUrl}/api/resolve-name?name=${encodeURIComponent(String(args.name))}`
+        );
+        const data = await res.json();
+        if (data.error) return `Error resolving name: ${data.error}`;
+        return JSON.stringify(data);
+      }
+
+      case "check_verified": {
+        const res = await fetch(
+          `${baseUrl}/api/verify?address=${encodeURIComponent(String(args.address))}`
+        );
+        const data = await res.json();
+        if (data.error) return `Error checking verification: ${data.error}`;
+        return JSON.stringify(data);
+      }
+
+      case "get_balance": {
+        const res = await fetch(
+          `${baseUrl}/api/activity?address=${encodeURIComponent(String(args.address))}&type=balance`
+        );
+        const data = await res.json();
+        if (data.error) return `Error fetching balance: ${data.error}`;
+        return JSON.stringify(data);
+      }
+
+      case "create_schedule": {
+        // Return schedule params for the frontend to pick up and open ScheduleForm
+        return JSON.stringify({
+          action: "open_schedule_form",
+          params: args,
+        });
+      }
+
+      case "cancel_schedule": {
+        return JSON.stringify({
+          action: "open_cancel_dialog",
+          scheduleId: args.scheduleId,
+        });
+      }
+
+      default:
+        return `Unknown tool: ${name}`;
+    }
+  } catch (err) {
+    return `Tool execution error: ${String(err)}`;
+  }
+}

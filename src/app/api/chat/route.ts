@@ -1,0 +1,103 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getGrokClient, GROK_MODEL, SYSTEM_PROMPT } from "@/lib/grokClient";
+import { TOOLS, executeTool } from "@/lib/tools";
+import type OpenAI from "openai";
+
+// Maximum tool-call rounds per request to prevent runaway loops
+const MAX_TOOL_ROUNDS = 5;
+
+type ChatMessage = OpenAI.Chat.ChatCompletionMessageParam;
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json() as { messages: ChatMessage[] };
+    const { messages } = body;
+
+    if (!messages || !Array.isArray(messages)) {
+      return NextResponse.json({ error: "messages array is required" }, { status: 400 });
+    }
+
+    const client = getGrokClient();
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    // Build conversation with system prompt
+    const conversation: ChatMessage[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...messages,
+    ];
+
+    let rounds = 0;
+
+    // Agentic loop: run until no more tool calls or max rounds hit
+    while (rounds < MAX_TOOL_ROUNDS) {
+      rounds++;
+
+      const response = await client.chat.completions.create({
+        model: GROK_MODEL,
+        messages: conversation,
+        tools: TOOLS,
+        tool_choice: "auto",
+      });
+
+      const choice = response.choices[0];
+      if (!choice) break;
+
+      const assistantMsg = choice.message;
+      conversation.push(assistantMsg as ChatMessage);
+
+      // No tool calls — we have a final response
+      const toolCalls = assistantMsg.tool_calls;
+      if (
+        choice.finish_reason === "stop" ||
+        !toolCalls ||
+        toolCalls.length === 0
+      ) {
+        return NextResponse.json({
+          content:       assistantMsg.content ?? "",
+          toolCallsMade: rounds - 1,
+        });
+      }
+
+      // Execute all tool calls in parallel
+      const toolResults: ChatMessage[] = await Promise.all(
+        toolCalls.map(async (tc) => {
+          // tc is ChatCompletionMessageToolCall which has .function
+          const fn = (tc as { id: string; function: { name: string; arguments: string } }).function;
+          let args: Record<string, unknown> = {};
+          try {
+            args = JSON.parse(fn.arguments);
+          } catch {
+            args = {};
+          }
+
+          const result = await executeTool(fn.name, args, baseUrl);
+
+          return {
+            role: "tool" as const,
+            tool_call_id: tc.id,
+            content: result,
+          };
+        })
+      );
+
+      conversation.push(...toolResults);
+    }
+
+    // Fallback if max rounds hit
+    return NextResponse.json({
+      content: "I reached the maximum number of tool calls. Please try rephrasing your request.",
+      toolCallsMade: rounds,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+
+    if (message.includes("XAI_API_KEY")) {
+      return NextResponse.json(
+        { error: "XAI_API_KEY is not configured. Please add it to your environment variables." },
+        { status: 503 }
+      );
+    }
+
+    return NextResponse.json({ error: `Chat error: ${message}` }, { status: 500 });
+  }
+}
