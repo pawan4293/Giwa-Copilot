@@ -16,6 +16,7 @@ interface BlockscoutLogParam {
 interface BlockscoutLogItem {
   transaction_hash: string;
   block_number: number;
+  address?: { hash?: string };
   decoded?: {
     method_call?: string;
     parameters?: BlockscoutLogParam[];
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const explorerRes = await fetch(
-      `https://sepolia-explorer.giwa.io/api/v2/addresses/${address}/logs?filter_address=${schedulerAddress}`
+      `https://sepolia-explorer.giwa.io/api/v2/addresses/${address}/logs`
     );
 
     if (!explorerRes.ok) {
@@ -74,6 +75,7 @@ export async function GET(req: NextRequest) {
     const items: BlockscoutLogItem[] = explorerData.items || [];
 
     const events = items
+      .filter((item) => item.address?.hash?.toLowerCase() === schedulerAddress.toLowerCase())
       .map((item) => {
         const method = item.decoded?.method_call?.split("(")[0] || "Unknown";
         const args: Record<string, string> = {};

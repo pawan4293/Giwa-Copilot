@@ -20,16 +20,46 @@ const EXAMPLE_PROMPTS = [
   "Explain Flashblocks",
 ];
 
+const STORAGE_KEY = "giwa-copilot-chat-history";
+
+function renderMessageContent(content: string) {
+  const parts = content.split(/(\[[^\]]*\]\([^)]+\))/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^\[([^\]]*)\]\(([^)]+)\)$/);
+    if (match) {
+      return (
+        <a
+          key={i}
+          href={match[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 hover:text-blue-300 underline"
+        >
+          {match[1]}
+        </a>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 export function ChatWindow() {
   const { address, isConnected } = useAccount();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
 
-  // Modal state for send confirmations
   const [sendModal, setSendModal] = useState<{
     isOpen: boolean;
     to: string;
@@ -40,6 +70,19 @@ export function ChatWindow() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    } catch {
+      // storage full or unavailable — ignore
+    }
+  }, [messages]);
+
+  const clearChat = () => {
+    setMessages([]);
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
@@ -61,6 +104,7 @@ export function ChatWindow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [...messages, userMsg].map(({ role, content }) => ({ role, content })),
+          connectedAddress: isConnected ? address : null,
         }),
       });
 
@@ -79,11 +123,9 @@ export function ChatWindow() {
 
       setMessages((prev) => [...prev, assistantMsg]);
 
-      // Check if Grok wants to open a schedule form or send dialog
       try {
         const parsed = JSON.parse(data.content);
         if (parsed.action === "open_schedule_form") {
-          // Delegate to ScheduleForm page
           window.location.href = `/schedule?prefill=${encodeURIComponent(JSON.stringify(parsed.params))}`;
         }
       } catch {
@@ -133,7 +175,6 @@ export function ChatWindow() {
                 </p>
               )}
 
-              {/* Example prompts */}
               <div className="mt-8 grid grid-cols-2 gap-2 max-w-md mx-auto">
                 {EXAMPLE_PROMPTS.map((prompt) => (
                   <motion.button
@@ -165,7 +206,7 @@ export function ChatWindow() {
                     : "bg-white/[0.06] border border-white/10 text-white/90 rounded-bl-md"
                 }`}
               >
-                {msg.content}
+                {renderMessageContent(msg.content)}
               </div>
             </motion.div>
           ))}
@@ -208,6 +249,14 @@ export function ChatWindow() {
       {/* Input */}
       <div className="border-t border-white/10 p-4">
         <div className="flex gap-3 items-end max-w-3xl mx-auto">
+          <button
+            onClick={clearChat}
+            title="Clear chat"
+            disabled={messages.length === 0}
+            className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-2xl border border-white/15 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+          >
+            🗑️
+          </button>
           <textarea
             ref={inputRef}
             value={input}
@@ -237,7 +286,6 @@ export function ChatWindow() {
         </div>
       </div>
 
-      {/* Send confirm modal */}
       <TxConfirmModal
         isOpen={sendModal.isOpen}
         onClose={() => setSendModal((s) => ({ ...s, isOpen: false }))}
