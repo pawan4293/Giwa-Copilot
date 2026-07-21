@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGrokClient, GROK_MODEL, SYSTEM_PROMPT } from "@/lib/grokClient";
+import { getGrokClient, GROK_MODEL, FALLBACK_MODEL, SYSTEM_PROMPT } from "@/lib/grokClient";
 import { TOOLS, executeTool } from "@/lib/tools";
 import type OpenAI from "openai";
 
@@ -36,12 +36,29 @@ export async function POST(req: NextRequest) {
     while (rounds < MAX_TOOL_ROUNDS) {
       rounds++;
 
-      const response = await client.chat.completions.create({
-        model: GROK_MODEL,
-        messages: conversation,
-        tools: TOOLS,
-        tool_choice: "auto",
-      });
+      let response;
+      try {
+        response = await client.chat.completions.create({
+          model: GROK_MODEL,
+          messages: conversation,
+          tools: TOOLS,
+          tool_choice: "auto",
+        });
+      } catch (toolErr) {
+        // Groq occasionally fails to generate a valid tool call — retry once
+        // without forcing tool use, on a smaller model, rather than erroring out.
+        const msg = toolErr instanceof Error ? toolErr.message : String(toolErr);
+        if (msg.includes("Failed to call a function") || msg.includes("failed_generation")) {
+          response = await client.chat.completions.create({
+            model: FALLBACK_MODEL,
+            messages: conversation,
+            tools: TOOLS,
+            tool_choice: "auto",
+          });
+        } else {
+          throw toolErr;
+        }
+      }
 
       const choice = response.choices[0];
       if (!choice) break;
