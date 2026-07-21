@@ -61,6 +61,7 @@ export function ChatWindow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [...messages, userMsg].map(({ role, content }) => ({ role, content })),
+          connectedAddress: isConnected ? address : null,
         }),
       });
 

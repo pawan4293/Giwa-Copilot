@@ -10,8 +10,8 @@ type ChatMessage = OpenAI.Chat.ChatCompletionMessageParam;
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { messages: ChatMessage[] };
-    const { messages } = body;
+    const body = await req.json() as { messages: ChatMessage[]; connectedAddress?: string | null };
+    const { messages, connectedAddress } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: "messages array is required" }, { status: 400 });
@@ -21,8 +21,12 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     // Build conversation with system prompt
+    const walletContext = connectedAddress
+      ? `\n\nThe user's currently connected wallet address is ${connectedAddress}. If they ask about "my balance", "my wallet", or similar, use this address — do not ask them to provide one.`
+      : "";
+
     const conversation: ChatMessage[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: SYSTEM_PROMPT + walletContext },
       ...messages,
     ];
 
