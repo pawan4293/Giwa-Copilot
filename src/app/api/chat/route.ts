@@ -3,14 +3,16 @@ import { getGrokClient, GROK_MODEL, FALLBACK_MODEL, SYSTEM_PROMPT } from "@/lib/
 import { TOOLS, executeTool } from "@/lib/tools";
 import type OpenAI from "openai";
 
-// Maximum tool-call rounds per request to prevent runaway loops
 const MAX_TOOL_ROUNDS = 5;
 
 type ChatMessage = OpenAI.Chat.ChatCompletionMessageParam;
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { messages: ChatMessage[]; connectedAddress?: string | null };
+    const body = (await req.json()) as {
+      messages: ChatMessage[];
+      connectedAddress?: string | null;
+    };
     const { messages, connectedAddress } = body;
 
     if (!messages || !Array.isArray(messages)) {
@@ -20,9 +22,8 @@ export async function POST(req: NextRequest) {
     const client = getGrokClient();
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-    // Build conversation with system prompt
     const walletContext = connectedAddress
-      ? `\n\nThe user's currently connected wallet address is ${connectedAddress}. If they ask about "my balance", "my wallet", or similar, use this address — do not ask them to provide one.`
+      ? `\n\nThe user's currently connected wallet address is ${connectedAddress}. If they ask about "my balance", "my wallet", "my transaction history", or similar, use this address directly — do not ask them to provide one.`
       : "";
 
     const conversation: ChatMessage[] = [
@@ -32,7 +33,6 @@ export async function POST(req: NextRequest) {
 
     let rounds = 0;
 
-    // Agentic loop: run until no more tool calls or max rounds hit
     while (rounds < MAX_TOOL_ROUNDS) {
       rounds++;
 
@@ -45,8 +45,6 @@ export async function POST(req: NextRequest) {
           tool_choice: "auto",
         });
       } catch (toolErr) {
-        // Groq occasionally fails to generate a valid tool call — retry once
-        // without forcing tool use, on a smaller model, rather than erroring out.
         const msg = toolErr instanceof Error ? toolErr.message : String(toolErr);
         if (msg.includes("Failed to call a function") || msg.includes("failed_generation")) {
           response = await client.chat.completions.create({
@@ -66,23 +64,16 @@ export async function POST(req: NextRequest) {
       const assistantMsg = choice.message;
       conversation.push(assistantMsg as ChatMessage);
 
-      // No tool calls — we have a final response
       const toolCalls = assistantMsg.tool_calls;
-      if (
-        choice.finish_reason === "stop" ||
-        !toolCalls ||
-        toolCalls.length === 0
-      ) {
+      if (choice.finish_reason === "stop" || !toolCalls || toolCalls.length === 0) {
         return NextResponse.json({
-          content:       assistantMsg.content ?? "",
+          content: assistantMsg.content ?? "",
           toolCallsMade: rounds - 1,
         });
       }
 
-      // Execute all tool calls in parallel
       const toolResults: ChatMessage[] = await Promise.all(
         toolCalls.map(async (tc) => {
-          // tc is ChatCompletionMessageToolCall which has .function
           const fn = (tc as { id: string; function: { name: string; arguments: string } }).function;
           let args: Record<string, unknown> = {};
           try {
@@ -104,7 +95,6 @@ export async function POST(req: NextRequest) {
       conversation.push(...toolResults);
     }
 
-    // Fallback if max rounds hit
     return NextResponse.json({
       content: "I reached the maximum number of tool calls. Please try rephrasing your request.",
       toolCallsMade: rounds,
