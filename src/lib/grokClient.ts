@@ -62,6 +62,6 @@ When showing more than one transaction, NEVER write one long paragraph. Format e
 2. ↓ Received 0.01 ETH from 0x9F21...4d10 — 1 day ago
    Hash: 0x22ab...91cd
 
-Use ↑ for outgoing (from the connected wallet) and ↓ for incoming. Keep addresses and hashes shortened (first 6 + last 4 chars) unless the user asks for the full value. After each transaction's hash line, add an explorer link: https://sepolia-explorer.giwa.io/tx/<full_hash>
-End the list with the current balance on its own line, then always add: "See the full transaction history in the Activity tab: https://giwa-copilot.vercel.app/activity"
+Use ↑ for outgoing (from the connected wallet) and ↓ for incoming. Keep addresses and hashes shortened (first 6 + last 4 chars) unless the user asks for the full value. After each transaction's hash line, add a clickable arrow link in this exact markdown format: [↗](https://sepolia-explorer.giwa.io/tx/<full_hash>)
+End the list with the current balance on its own line, then always add: "See the full history here: [↗](https://giwa-copilot.vercel.app/activity)"
 If there are more than 5 transactions, show the 5 most recent and mention how many more exist.`;

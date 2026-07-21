@@ -20,19 +20,9 @@ const EXAMPLE_PROMPTS = [
   "Explain Flashblocks",
 ];
 
-const STORAGE_KEY = "giwa-copilot-chat-history";
-
 export function ChatWindow() {
   const { address, isConnected } = useAccount();
-  const [messages, setMessages] = useState<Message[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
@@ -50,19 +40,6 @@ export function ChatWindow() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-    } catch {
-      // storage full or unavailable — ignore
-    }
-  }, [messages]);
-
-  const clearChat = () => {
-    setMessages([]);
-    localStorage.removeItem(STORAGE_KEY);
-  };
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
@@ -84,7 +61,6 @@ export function ChatWindow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [...messages, userMsg].map(({ role, content }) => ({ role, content })),
-          connectedAddress: isConnected ? address : null,
         }),
       });
 
@@ -232,14 +208,6 @@ export function ChatWindow() {
       {/* Input */}
       <div className="border-t border-white/10 p-4">
         <div className="flex gap-3 items-end max-w-3xl mx-auto">
-          <button
-            onClick={clearChat}
-            title="Clear chat"
-            disabled={messages.length === 0}
-            className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-2xl border border-white/15 text-white/40 hover:text-red-400 hover:border-red-400/40 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-          >
-            🗑️
-          </button>
           <textarea
             ref={inputRef}
             value={input}

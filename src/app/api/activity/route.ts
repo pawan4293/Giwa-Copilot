@@ -65,84 +65,28 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const CHUNK_SIZE = BigInt(99000); // stay under the 100k RPC limit
-    const latestBlock = await publicClient.getBlockNumber();
-    const addr = address as `0x${string}`;
+    const explorerRes = await fetch(
+      `https://sepolia-explorer.giwa.io/api/v2/addresses/${address}/logs?filter_address=${schedulerAddress}`
+    );
+    const explorerData = await explorerRes.json();
+    const items = explorerData.items || [];
 
-    const depositedLogs: Awaited<ReturnType<typeof publicClient.getLogs>> = [];
-    for (let from = BigInt(0); from <= latestBlock; from += CHUNK_SIZE + BigInt(1)) {
-      const to = from + CHUNK_SIZE > latestBlock ? latestBlock : from + CHUNK_SIZE;
-      depositedLogs.push(
-        ...(await publicClient.getLogs({
-          address: schedulerAddress,
-          event: depositedEvent,
-          args: { owner: addr },
-          fromBlock: from,
-          toBlock: to,
-        }))
-      );
-    }
-
-    const releasedLogs: Awaited<ReturnType<typeof publicClient.getLogs>> = [];
-    for (let from = BigInt(0); from <= latestBlock; from += CHUNK_SIZE + BigInt(1)) {
-      const to = from + CHUNK_SIZE > latestBlock ? latestBlock : from + CHUNK_SIZE;
-      releasedLogs.push(
-        ...(await publicClient.getLogs({
-          address: schedulerAddress,
-          event: releasedEvent,
-          args: { recipient: addr },
-          fromBlock: from,
-          toBlock: to,
-        }))
-      );
-    }
-
-    const cancelledLogs: Awaited<ReturnType<typeof publicClient.getLogs>> = [];
-    for (let from = BigInt(0); from <= latestBlock; from += CHUNK_SIZE + BigInt(1)) {
-      const to = from + CHUNK_SIZE > latestBlock ? latestBlock : from + CHUNK_SIZE;
-      cancelledLogs.push(
-        ...(await publicClient.getLogs({
-          address: schedulerAddress,
-          event: cancelledEvent,
-          args: { owner: addr },
-          fromBlock: from,
-          toBlock: to,
-        }))
-      );
-    }
-
-    const events = [
-      ...depositedLogs.map((log) => ({
-        type:        "Deposited",
-        txHash:      log.transactionHash,
-        blockNumber: log.blockNumber?.toString() ?? "0",
-        args:        serializeArgs((log as unknown as { args: Record<string, unknown> }).args),
-        explorerUrl: `https://sepolia-explorer.giwa.io/tx/${log.transactionHash}`,
-      })),
-      ...releasedLogs.map((log) => ({
-        type:        "Released",
-        txHash:      log.transactionHash,
-        blockNumber: log.blockNumber?.toString() ?? "0",
-        args:        serializeArgs((log as unknown as { args: Record<string, unknown> }).args),
-        explorerUrl: `https://sepolia-explorer.giwa.io/tx/${log.transactionHash}`,
-      })),
-      ...cancelledLogs.map((log) => ({
-        type:        "Cancelled",
-        txHash:      log.transactionHash,
-        blockNumber: log.blockNumber?.toString() ?? "0",
-        args:        serializeArgs((log as unknown as { args: Record<string, unknown> }).args),
-        explorerUrl: `https://sepolia-explorer.giwa.io/tx/${log.transactionHash}`,
-      })),
-    ].sort((a, b) => {
-      const diff = BigInt(b.blockNumber) - BigInt(a.blockNumber);
-      return diff > BigInt(0) ? 1 : diff < BigInt(0) ? -1 : 0;
-    });
-
-    return NextResponse.json({
-      address,
-      events,
-      scheduler: schedulerAddress,
-    });
+    const events = items
+      .map((item: { transaction_hash: string; block_number: number; decoded?: { method_call?: string; parameters?: { name: string; value: string }[] } }) => {
+        const method = item.decoded?.method_call?.split("(")[0] || "Unknown";
+        const args: Record<string, string> = {};
+        for (const p of item.decoded?.parameters || []) {
+          args[p.name] = p.value;
+        }
+        return {
+          type: method,
+          txHash: item.transaction_hash,
+          blockNumber: String(item.block_number),
+          args,
+          explorerUrl: `https://sepolia-explorer.giwa.io/tx/${item.transaction_hash}`,
+        };
+      })
+      .sort((a: { blockNumber: string }, b: { blockNumber: string }) => Number(b.blockNumber) - Number(a.blockNumber));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Log fetch failed: ${message}` }, { status: 500 });
