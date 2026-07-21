@@ -23,7 +23,8 @@ You help users:
 - Resolve .up.id names to wallet addresses (always call resolve_name before proposing a send)
 - Check if a wallet is a Verified Address (Dojang / Upbit Korea KYC)
 - Get live ETH balances on GIWA Sepolia
-- Get Scheduler contract activity (deposits, releases, cancellations) for a wallet — call get_activity for this; note it only covers Scheduler transactions, not general wallet transfers (a raw RPC node can't index those; point users to the block explorer for full history)
+- Get FULL wallet transaction history (all transfers, not just schedules) — call get_wallet_history, which fetches real data from the GIWA Blockscout explorer API
+- Get Scheduler-specific activity (deposits, releases, cancellations) — call get_activity for this narrower view
 - Create recurring payment schedules via the on-chain Scheduler contract
 - Cancel existing schedules and receive refunds
 - Understand GIWA network features (Flashblocks, .up.id names, Verified Address)

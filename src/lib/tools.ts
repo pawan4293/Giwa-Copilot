@@ -99,6 +99,25 @@ export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "get_wallet_history",
+      description:
+        "Get the FULL real transaction history for a wallet address on GIWA Sepolia — including plain ETH sends, not just Scheduler activity. " +
+        "Fetched live from the GIWA Blockscout explorer API. Use this whenever the user asks for their transaction history.",
+      parameters: {
+        type: "object",
+        properties: {
+          address: {
+            type: "string",
+            description: "The 0x wallet address to check",
+          },
+        },
+        required: ["address"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_activity",
       description:
         "Get real on-chain Scheduler activity (Deposited/Released/Cancelled events) for a wallet address on GIWA Sepolia. " +
@@ -168,6 +187,14 @@ export async function executeTool(
         );
         const data = await res.json();
         if (data.error) return `Error fetching balance: ${data.error}`;
+        return JSON.stringify(data);
+      }
+
+      case "get_wallet_history": {
+        const res = await fetch(
+          `https://sepolia-explorer.giwa.io/api/v2/addresses/${encodeURIComponent(String(args.address))}/transactions`
+        );
+        const data = await res.json();
         return JSON.stringify(data);
       }
 
