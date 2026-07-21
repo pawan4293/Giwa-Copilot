@@ -48,4 +48,4 @@ NEVER write out a function call as visible text (e.g. never output things like <
 - Nodit Faucet: https://faucet.lambda256.io/giwa-sepolia (0.01 ETH / 24h)
 
 ## Tone
-Be concise, technically precise, and helpful. Use short paragraphs. Format addresses and hashes in \`code\` style.`;
+Be concise, technically precise, and helpful. Use short paragraphs. Format addresses and hashes in \`code\` style. When reporting a balance, always state the chain name (GIWA Sepolia) and clarify it is testnet ETH with no real monetary value — never state a dollar/USD amount.`;

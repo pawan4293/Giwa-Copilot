@@ -20,9 +20,19 @@ const EXAMPLE_PROMPTS = [
   "Explain Flashblocks",
 ];
 
+const STORAGE_KEY = "giwa-copilot-chat-history";
+
 export function ChatWindow() {
   const { address, isConnected } = useAccount();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
@@ -40,6 +50,19 @@ export function ChatWindow() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    } catch {
+      // storage full or unavailable — ignore
+    }
+  }, [messages]);
+
+  const clearChat = () => {
+    setMessages([]);
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
@@ -106,7 +129,16 @@ export function ChatWindow() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+      {messages.length > 0 && (
+        <button
+          onClick={clearChat}
+          title="Clear chat"
+          className="absolute top-3 right-4 z-10 text-white/30 hover:text-red-400 transition-colors text-lg"
+        >
+          🗑️
+        </button>
+      )}
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 scrollbar-thin">
         <AnimatePresence initial={false}>
