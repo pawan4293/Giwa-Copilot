@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatEther } from "viem";
 
 interface EventRow {
-  type: "Deposited" | "Released" | "Cancelled";
+  type: "Deposited" | "Released" | "Cancelled" | "Transfer" | string;
   txHash: string;
   blockNumber: string;
   args: Record<string, string>;
@@ -17,6 +17,7 @@ const TYPE_COLORS: Record<string, string> = {
   Deposited: "text-blue-400 bg-blue-400/10 border-blue-400/20",
   Released:  "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
   Cancelled: "text-red-400 bg-red-400/10 border-red-400/20",
+  Transfer:  "text-white/70 bg-white/[0.06] border-white/20",
 };
 
 export function ActivityTable() {
@@ -191,6 +192,34 @@ export function ActivityTable() {
                     <div className="text-white/30 mb-1">Refund</div>
                     <div className="text-red-400 font-mono">
                       {formatEther(BigInt(event.args.refundAmount || "0"))} ETH
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {event.type === "Transfer" && (
+                <>
+                  <div>
+                    <div className="text-white/30 mb-1">
+                      {event.args.from?.toLowerCase() === address?.toLowerCase() ? "Sent to" : "Received from"}
+                    </div>
+                    <div className="text-white font-mono">
+                      {event.args.from?.toLowerCase() === address?.toLowerCase()
+                        ? `${event.args.to?.slice(0, 6)}…${event.args.to?.slice(-4)}`
+                        : `${event.args.from?.slice(0, 6)}…${event.args.from?.slice(-4)}`}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-white/30 mb-1">Amount</div>
+                    <div
+                      className={`font-mono font-bold ${
+                        event.args.from?.toLowerCase() === address?.toLowerCase()
+                          ? "text-red-400"
+                          : "text-emerald-400"
+                      }`}
+                    >
+                      {event.args.from?.toLowerCase() === address?.toLowerCase() ? "-" : "+"}
+                      {formatEther(BigInt(event.args.valueWei || "0"))} ETH
                     </div>
                   </div>
                 </>
