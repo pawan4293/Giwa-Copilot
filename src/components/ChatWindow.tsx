@@ -158,6 +158,9 @@ export function ChatWindow() {
           amountEth: action.amountEth,
         });
       }
+      if (action?.action === "open_split_form") {
+        window.location.href = `/split/new?prefill=${encodeURIComponent(JSON.stringify(action.params))}`;
+      }
     } catch (e) {
       setError("Network error. Please try again.");
       console.error(e);

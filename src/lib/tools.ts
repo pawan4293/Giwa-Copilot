@@ -126,6 +126,47 @@ export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "create_split",
+      description:
+        "Create a split payment (shared bill). If the amounts are unambiguous (either an equal split, " +
+        "or explicit per-person amounts that are all given), this creates the split directly and returns a shareable link. " +
+        "If anything is ambiguous or incomplete (e.g. some amounts given but not others, unclear total), " +
+        "this instead opens a form for the user to review and confirm before creating.",
+      parameters: {
+        type: "object",
+        properties: {
+          description: {
+            type: "string",
+            description: "What the split is for, e.g. 'Lunch today'",
+          },
+          totalAmountEth: {
+            type: "string",
+            description: "Total amount in ETH, if known/given",
+          },
+          recipients: {
+            type: "array",
+            description: "List of recipients with their identifier (.up.id or 0x address) and amount if explicitly given",
+            items: {
+              type: "object",
+              properties: {
+                identifier: { type: "string" },
+                amountEth: { type: "string", description: "Leave empty string if not explicitly given (equal split)" },
+              },
+              required: ["identifier"],
+            },
+          },
+          splitEqually: {
+            type: "boolean",
+            description: "True if the user wants the total split equally among all recipients",
+          },
+        },
+        required: ["description", "recipients", "splitEqually"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_wallet_history",
       description:
         "Get the FULL real transaction history for a wallet address on GIWA Sepolia — including plain ETH sends, not just Scheduler activity. " +
@@ -315,6 +356,54 @@ export async function executeTool(
         return JSON.stringify({
           action: "open_schedule_form",
           params: args,
+        });
+      }
+
+      case "create_split": {
+        const recipients = args.recipients as { identifier: string; amountEth?: string }[];
+        const splitEqually = args.splitEqually as boolean;
+        const totalAmountEth = args.totalAmountEth as string | undefined;
+
+        const allAmountsGiven = recipients.every((r) => r.amountEth && r.amountEth.trim() !== "");
+        const isClear =
+          (splitEqually && totalAmountEth) || (!splitEqually && allAmountsGiven);
+
+        if (!isClear) {
+          // Ambiguous — let the frontend open a form to complete the details
+          return JSON.stringify({
+            action: "open_split_form",
+            params: { description: args.description, totalAmountEth, recipients, splitEqually },
+          });
+        }
+
+        let finalRecipients: { identifier: string; amountEth: string }[];
+        if (splitEqually && totalAmountEth) {
+          const each = (parseFloat(totalAmountEth) / recipients.length).toString();
+          finalRecipients = recipients.map((r) => ({ identifier: r.identifier, amountEth: each }));
+        } else {
+          finalRecipients = recipients.map((r) => ({ identifier: r.identifier, amountEth: r.amountEth! }));
+        }
+
+        const total = totalAmountEth || finalRecipients.reduce((a, r) => a + parseFloat(r.amountEth), 0).toString();
+
+        const createRes = await fetch(`${baseUrl}/api/splits/create`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creatorAddress: senderAddress,
+            description: args.description,
+            totalAmountEth: total,
+            recipients: finalRecipients,
+            baseUrl,
+          }),
+        });
+        const createData = await createRes.json();
+        if (createData.error) {
+          return JSON.stringify({ error: createData.error });
+        }
+        return JSON.stringify({
+          action: "split_created",
+          shareUrl: createData.shareUrl,
         });
       }
 
