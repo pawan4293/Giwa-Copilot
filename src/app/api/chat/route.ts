@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
             args = {};
           }
 
-          const result = await executeTool(fn.name, args, baseUrl);
+          const result = await executeTool(fn.name, args, baseUrl, connectedAddress ?? null);
 
           if (fn.name === "send_eth" || fn.name === "create_schedule" || fn.name === "cancel_schedule") {
             try {

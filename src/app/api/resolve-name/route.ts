@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPublicClient, http } from "viem";
 import { sepolia } from "viem/chains";
+import { normalize } from "viem/ens";
 
 // .up.id names are ENS subdomains registered on Ethereum Sepolia L1 (not GIWA)
 // We resolve them using viem's ENS utilities against Ethereum Sepolia
@@ -26,7 +27,17 @@ export async function GET(req: NextRequest) {
       transport: http(sepoliaRpc),
     });
 
-    const address = await l1Client.getEnsAddress({ name: fullName });
+    let normalizedName: string;
+    try {
+      normalizedName = normalize(fullName);
+    } catch {
+      return NextResponse.json(
+        { error: `Invalid name format: ${fullName}`, name: fullName },
+        { status: 400 }
+      );
+    }
+
+    const address = await l1Client.getEnsAddress({ name: normalizedName });
 
     if (!address) {
       return NextResponse.json(

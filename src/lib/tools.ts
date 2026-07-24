@@ -186,7 +186,8 @@ export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
 export async function executeTool(
   name: string,
   args: Record<string, unknown>,
-  baseUrl: string
+  baseUrl: string,
+  senderAddress: string | null
 ): Promise<string> {
   try {
     switch (name) {
@@ -284,6 +285,23 @@ export async function executeTool(
       }
 
       case "send_eth": {
+        if (senderAddress) {
+          try {
+            const balRes = await fetch(
+              `${baseUrl}/api/activity?address=${encodeURIComponent(senderAddress)}&type=balance`
+            );
+            const balData = await balRes.json();
+            const balanceEth = parseFloat(balData.balanceEth ?? balData.balance ?? "0");
+            const requestedEth = parseFloat(String(args.amountEth));
+            if (!isNaN(balanceEth) && !isNaN(requestedEth) && requestedEth > balanceEth) {
+              return JSON.stringify({
+                error: `Insufficient balance. You have ${balanceEth} ETH but tried to send ${requestedEth} ETH.`,
+              });
+            }
+          } catch {
+            // if balance check itself fails, don't block the send — let the wallet handle it
+          }
+        }
         return JSON.stringify({
           action: "open_send_modal",
           to: args.to,
