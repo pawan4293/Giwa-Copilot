@@ -63,7 +63,25 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      if (!response) throw lastErr;
+      if (!response) {
+        // All models failed at tool calling — last resort: ask the primary model
+        // to respond in plain text without any tools, so the user gets something useful.
+        try {
+          response = await client.chat.completions.create({
+            model: GROK_MODEL,
+            messages: [
+              ...conversation,
+              {
+                role: "system",
+                content:
+                  "A tool call just failed. Apologize briefly and ask the user to rephrase their request more simply (e.g. use a plain 0x address instead of a name, or split the request into smaller steps).",
+              },
+            ],
+          });
+        } catch {
+          throw lastErr;
+        }
+      }
 
       const choice = response.choices[0];
       if (!choice) break;
