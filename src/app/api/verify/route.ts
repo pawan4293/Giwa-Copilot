@@ -46,11 +46,10 @@ export async function GET(req: NextRequest) {
       args: [uid],
     });
 
-    const [, , , expirationTime, revocationTime] = attestation;
     const now = BigInt(Math.floor(Date.now() / 1000));
     const zero = BigInt(0);
-    const revoked = revocationTime !== zero;
-    const expired = expirationTime !== zero && expirationTime < now;
+    const revoked = attestation.revocationTime !== zero;
+    const expired = attestation.expirationTime !== zero && attestation.expirationTime < now;
 
     return NextResponse.json({
       address,

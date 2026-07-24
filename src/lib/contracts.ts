@@ -70,7 +70,7 @@ export const SCHEDULER_ABI = parseAbi([
 
 // EAS — minimal subset used for attestation reads
 export const EAS_ABI = parseAbi([
-  "function getAttestation(bytes32 uid) external view returns (bytes32 uid, bytes32 schema, uint64 time, uint64 expirationTime, uint64 revocationTime, bytes32 refUID, address recipient, address attester, bool revocable, bytes data)",
+  "function getAttestation(bytes32 uid) external view returns ((bytes32 uid, bytes32 schema, uint64 time, uint64 expirationTime, uint64 revocationTime, bytes32 refUID, address recipient, address attester, bool revocable, bytes data))",
   "function isAttestationValid(bytes32 uid) external view returns (bool)",
 ]);
 
