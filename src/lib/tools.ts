@@ -215,14 +215,63 @@ export async function executeTool(
         const data = await res.json();
         if (data.error) return `Error fetching balance: ${data.error}`;
         return JSON.stringify(data);
+
+    
       }
 
       case "get_wallet_history": {
+        const addr = String(args.address).toLowerCase();
         const res = await fetch(
-          `https://sepolia-explorer.giwa.io/api/v2/addresses/${encodeURIComponent(String(args.address))}/transactions`
+          `https://sepolia-explorer.giwa.io/api/v2/addresses/${encodeURIComponent(addr)}/transactions`
         );
         const data = await res.json();
-        return JSON.stringify(data);
+        const items = Array.isArray(data.items) ? data.items : [];
+
+        function timeAgo(iso: string): string {
+          const diffMs = Date.now() - new Date(iso).getTime();
+          const mins = Math.floor(diffMs / 60000);
+          if (mins < 1) return "just now";
+          if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+          const hours = Math.floor(mins / 60);
+          if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+          const days = Math.floor(hours / 24);
+          return `${days} day${days === 1 ? "" : "s"} ago`;
+        }
+
+        async function resolveName(address: string): Promise<string | null> {
+          try {
+            const r = await fetch(`${baseUrl}/api/resolve-address?address=${address}`);
+            const d = await r.json();
+            return d.name || null;
+          } catch {
+            return null;
+          }
+        }
+
+        const nameCache: Record<string, string | null> = {};
+        const simplified = await Promise.all(
+          items.slice(0, 10).map(async (tx: Record<string, unknown>) => {
+            const from = String((tx.from as Record<string, unknown>)?.hash || "").toLowerCase();
+            const to = String((tx.to as Record<string, unknown>)?.hash || "").toLowerCase();
+            const outgoing = from === addr;
+            const counterparty = outgoing ? to : from;
+
+            if (!(counterparty in nameCache)) {
+              nameCache[counterparty] = await resolveName(counterparty);
+            }
+
+            return {
+              direction: outgoing ? "sent" : "received",
+              counterpartyAddress: counterparty,
+              counterpartyName: nameCache[counterparty],
+              amountEth: tx.value ? (Number(tx.value) / 1e18).toString() : "0",
+              timeAgo: tx.timestamp ? timeAgo(String(tx.timestamp)) : "unknown time",
+              hash: tx.hash,
+            };
+          })
+        );
+
+        return JSON.stringify({ transactions: simplified });
       }
 
       case "get_activity": {
