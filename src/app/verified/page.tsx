@@ -184,18 +184,19 @@ export default function VerifiedPage() {
 
             {!result.verified && (
               <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-4 mb-6 text-sm text-white/50">
-                <div className="font-bold mb-1">Not Verified</div>
-                <div className="text-white/30 text-xs">
-                  This wallet has not been verified by Upbit Korea, or the attestation
-                  has expired. To get verified, visit the GIWA playground.
-                </div>
-                <a
-                  href="https://sepolia-playground.giwa.io/"
+                <div className="font-bold mb-2">Don't have a .up.id? Get verified in 3 steps</div>
+                <ol className="text-white/40 text-xs space-y-1.5 list-decimal list-inside mb-3">
+                  <li>Open the GIWA Sepolia Playground and connect this same wallet</li>
+                  <li>Click "Issue Dojang" — instant, self-serve on testnet, no real KYC needed</li>
+                  <li>Type a username and click "Issue UP ID" to register your .up.id</li>
+                </ol>
+                
+                 <a href="https://sepolia-playground.giwa.io/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 block text-xs text-white/40 hover:text-white/70 transition-colors"
+                  className="inline-block bg-white text-black text-xs font-bold px-4 py-2 rounded-xl hover:bg-white/90 transition-all"
                 >
-                  Get Verified at sepolia-playground.giwa.io ↗
+                  Open Playground ↗
                 </a>
               </div>
             )}
