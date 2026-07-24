@@ -15,7 +15,7 @@ export function getGrokClient(): OpenAI {
 }
 
 export const GROK_MODEL = "llama-3.3-70b-versatile";
-export const FALLBACK_MODELS = ["llama-3.1-8b-instant", "gemma2-9b-it"];
+export const FALLBACK_MODELS = ["llama-3.1-8b-instant"];
 
 export const SYSTEM_PROMPT = `You are GIWA Copilot, an AI assistant for the GIWA Sepolia testnet (OP Stack L2, chain ID 91342).
 
