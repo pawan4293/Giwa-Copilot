@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 
@@ -10,6 +10,14 @@ interface RecipientRow {
 }
 
 export default function NewSplitPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-20 text-white/40">Loading…</div>}>
+      <NewSplitPageInner />
+    </Suspense>
+  );
+}
+
+function NewSplitPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { address, isConnected } = useAccount();
