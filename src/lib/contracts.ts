@@ -23,11 +23,26 @@ export const CONTRACTS = {
   PYTH:                      "0x2880aB155794e7179c9eE2e38200202908C17B43",
 } as const;
 
+
+export const ATTESTATION_INDEXER = "0x9C9Bf29880448aB39795a11b669e22A0f1d790ec" as const;
+export const VERIFIED_ADDRESS_SCHEMA = "0x072d75e18b2be4f89a13a7147240477481c4b526d5795802acba59046b426e08" as const;
+export const PLAYGROUND_ATTESTER = "0x63CCe2b569A7bC35895ee24306c1512fefc06121" as const;
+
+export const ATTESTATION_INDEXER_ABI = parseAbi([
+  "function getAttestationUid(bytes32 schemaUid, address attester, address recipient) external view returns (bytes32)",
+]);
+
 // Dojang attester IDs
 export const ATTESTER_IDS = {
-  // keccak256("dojang.dojangattesterids.upbitkorea")
+  // keccak256("dojang.dojangattesterids.upbitkorea") — production attester
   UPBIT_KOREA:
     "0xd99b42e778498aa3c9c1f6a012359130252780511687a35982e8e52735453034" as const,
+  // Testnet-only: GIWA Sepolia Playground self-serve attester.
+  // Confirmed via on-chain EAS log (attester = 0x63CCe2b569A7bC35895ee24306c1512fefc06121)
+  // that Playground issues test Verified Address attestations under a different
+  // attesterId than production. Remove before mainnet.
+  PLAYGROUND_TESTNET:
+    "0x0000000000000000000000000000000000000000000000000000000000000000" as const, // placeholder, see note below
 } as const;
 
 // ────────────────────────────────────────────────────────────────────────────
