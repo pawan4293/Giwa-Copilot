@@ -32,6 +32,12 @@ export const ATTESTATION_INDEXER_ABI = parseAbi([
   "function getAttestationUid(bytes32 schemaUid, address attester, address recipient) external view returns (bytes32)",
 ]);
 
+
+export const UP_NAME_REGISTRY_ABI = parseAbi([
+  "function ownedTokenId(address owner) external view returns (uint256)",
+  "function getLabel(bytes32 tokenId) external view returns (string)",
+]);
+
 // Dojang attester IDs
 export const ATTESTER_IDS = {
   // keccak256("dojang.dojangattesterids.upbitkorea") — production attester

@@ -8,10 +8,9 @@ import { isAddress } from "viem";
 interface VerifyResult {
   address: string;
   verified: boolean;
-  attester: string;
-  attesterId: string;
-  contract: string;
-  chain: string;
+  attestationUid?: string;
+  contract?: string;
+  chain?: string;
   error?: string;
 }
 
@@ -33,6 +32,7 @@ function VerifiedBadge({ verified }: { verified: boolean }) {
 }
 
 export default function VerifiedPage() {
+  const [upName, setUpName] = useState<string | null>(null);
   const { address: connectedAddress } = useAccount();
   const [query,   setQuery]   = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,6 +50,7 @@ export default function VerifiedPage() {
 
     setLoading(true);
     setResult(null);
+    setUpName(null);
     setError(null);
 
     try {
@@ -60,6 +61,10 @@ export default function VerifiedPage() {
       } else {
         setResult(data);
       }
+
+      const nameRes = await fetch(`/api/resolve-address?address=${encodeURIComponent(target)}`);
+      const nameData = await nameRes.json();
+      if (nameData.name) setUpName(nameData.name);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -160,6 +165,11 @@ export default function VerifiedPage() {
               <div className="text-white/40 font-mono text-sm break-all">
                 {result.address}
               </div>
+              {upName && (
+                <div className="text-emerald-400/70 text-sm font-bold mt-1">
+                  {upName}
+                </div>
+              )}
             </div>
 
             {result.verified && (
@@ -193,10 +203,9 @@ export default function VerifiedPage() {
             {/* Details */}
             <div className="space-y-3 text-xs">
               {[
-                { label: "Attester",    value: result.attester },
-                { label: "Attester ID", value: result.attesterId, mono: true, truncate: true },
-                { label: "Contract",    value: result.contract,   mono: true },
-                { label: "Chain",       value: result.chain },
+                { label: "Attestation UID", value: result.attestationUid, mono: true, truncate: true },
+                { label: "Contract",        value: result.contract,       mono: true },
+                { label: "Chain",           value: result.chain },
               ].map((row) => (
                 <div key={row.label} className="flex justify-between items-center py-2 border-b border-white/5">
                   <span className="text-white/30">{row.label}</span>
