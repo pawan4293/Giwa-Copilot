@@ -25,6 +25,7 @@ export function ActivityTable() {
   const [events,  setEvents]  = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+  const [nameCache, setNameCache] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     if (!address) return;
@@ -51,6 +52,44 @@ export function ActivityTable() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadNames = useCallback(async (addrs: string[]) => {
+    const unique = [...new Set(addrs.map((a) => a.toLowerCase()))].filter(
+      (a) => a && !(a in nameCache)
+    );
+    if (unique.length === 0) return;
+
+    const results = await Promise.all(
+      unique.map(async (a) => {
+        try {
+          const res = await fetch(`/api/resolve-address?address=${a}`);
+          const data = await res.json();
+          return [a, data.name as string | null] as const;
+        } catch {
+          return [a, null] as const;
+        }
+      })
+    );
+
+    setNameCache((prev) => {
+      const next = { ...prev };
+      for (const [a, name] of results) {
+        if (name) next[a] = name;
+      }
+      return next;
+    });
+  }, [nameCache]);
+
+  useEffect(() => {
+    const counterparties = events
+      .filter((e) => e.type === "Transfer")
+      .map((e) =>
+        e.args.from?.toLowerCase() === address?.toLowerCase() ? e.args.to : e.args.from
+      )
+      .filter(Boolean) as string[];
+    loadNames(counterparties);
+  }, [events, address, loadNames]);
+
 
   if (!isConnected) {
     return (
@@ -204,9 +243,16 @@ export function ActivityTable() {
                       {event.args.from?.toLowerCase() === address?.toLowerCase() ? "Sent to" : "Received from"}
                     </div>
                     <div className="text-white font-mono">
-                      {event.args.from?.toLowerCase() === address?.toLowerCase()
-                        ? `${event.args.to?.slice(0, 6)}…${event.args.to?.slice(-4)}`
-                        : `${event.args.from?.slice(0, 6)}…${event.args.from?.slice(-4)}`}
+                      {(() => {
+                        const counterparty =
+                          event.args.from?.toLowerCase() === address?.toLowerCase()
+                            ? event.args.to
+                            : event.args.from;
+                        const name = counterparty && nameCache[counterparty.toLowerCase()];
+                        return name
+                          ? name
+                          : `${counterparty?.slice(0, 6)}…${counterparty?.slice(-4)}`;
+                      })()}
                     </div>
                   </div>
                   <div>
