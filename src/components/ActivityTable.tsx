@@ -242,16 +242,22 @@ export function ActivityTable() {
                     <div className="text-white/30 mb-1">
                       {event.args.from?.toLowerCase() === address?.toLowerCase() ? "Sent to" : "Received from"}
                     </div>
-                    <div className="text-white font-mono">
+                    <div>
                       {(() => {
                         const counterparty =
                           event.args.from?.toLowerCase() === address?.toLowerCase()
                             ? event.args.to
                             : event.args.from;
                         const name = counterparty && nameCache[counterparty.toLowerCase()];
-                        return name
-                          ? name
-                          : `${counterparty?.slice(0, 6)}…${counterparty?.slice(-4)}`;
+                        const shortAddr = `${counterparty?.slice(0, 6)}…${counterparty?.slice(-4)}`;
+                        return name ? (
+                          <>
+                            <div className="text-white font-mono">{name}</div>
+                            <div className="text-white/30 font-mono text-[10px] mt-0.5">{shortAddr}</div>
+                          </>
+                        ) : (
+                          <div className="text-white font-mono">{shortAddr}</div>
+                        );
                       })()}
                     </div>
                   </div>
