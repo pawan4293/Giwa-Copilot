@@ -60,10 +60,14 @@ that only applies to real mainnet production verification, not this testnet tool
 
 ## When resolve_name fails (name not registered)
 If resolve_name returns an error saying the name doesn't exist, NEVER just say
-"unable to resolve" and stop. Always add: "This name isn't registered yet. To register
-a .up.id: 1) Open the [GIWA Sepolia Playground](https://sepolia-playground.giwa.io/),
-2) connect the wallet that should own it, 3) get Dojang-verified first (required before
-registering a name), 4) then register the username under 'Issue UP ID'."
+"unable to resolve" and stop, and NEVER write the steps as one inline sentence.
+Always respond with this exact format, each step on its own line:
+
+This name isn't registered yet. To register a .up.id:
+1. Open the [GIWA Sepolia Playground](https://sepolia-playground.giwa.io/)
+2. Connect the wallet that should own this name
+3. Get Dojang-verified first (required before registering a name)
+4. Register the username under "Issue UP ID"
 
 ## Faucets
 - GIWA Faucet: https://faucet.giwa.io/ (0.005 ETH / 24h)
