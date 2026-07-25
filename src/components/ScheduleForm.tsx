@@ -1,14 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseEther, isAddress } from "viem";
+import { useAccount, useBalance, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { parseEther, isAddress, formatEther } from "viem";
 import { SCHEDULER_ABI } from "@/lib/contracts";
-import { INTERVAL_OPTIONS } from "@/lib/qstash";
 import { FlashblocksStatus } from "./FlashblocksStatus";
 
-const SCHEDULER_ADDRESS = process.env.NEXT_PUBLIC_SCHEDULER_ADDRESS || "0x0000000000000000000000000000000000000000";
+const SCHEDULER_ADDRESS = (process.env.NEXT_PUBLIC_SCHEDULER_ADDRESS ||
+  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+
+const UNIT_SECONDS: Record<string, number> = {
+  Minutes: 60,
+  Hours: 3600,
+  Days: 86400,
+  Weeks: 604800,
+  Months: 2592000, // 30 days
+};
 
 interface PrefillParams {
   recipient?: string;
@@ -18,48 +26,92 @@ interface PrefillParams {
   endsAt?: number;
 }
 
-export function ScheduleForm({ prefill }: { prefill?: PrefillParams }) {
+interface Props {
+  prefill?: PrefillParams;
+  onClose?: () => void;
+  onSuccess?: (txHash: string, scheduleSummary: string) => void;
+}
+
+function toLocalInputs(ts: number) {
+  const d = new Date(ts * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return { date, time };
+}
+
+function fromLocalInputs(date: string, time: string): number {
+  if (!date || !time) return 0;
+  return Math.floor(new Date(`${date}T${time}:00`).getTime() / 1000);
+}
+
+export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
   const { address, isConnected, chainId } = useAccount();
   const isCorrectChain = chainId === 91342;
+  const { data: balanceData } = useBalance({ address, chainId: 91342 });
+ const availableEth = balanceData ? parseFloat(formatEther(balanceData.value)) : 0;
 
-  const [recipient,   setRecipient]   = useState(prefill?.recipient || "");
-  const [amount,      setAmount]      = useState(prefill?.amountPerReleaseEth || "0.01");
-  const [intervalIdx, setIntervalIdx] = useState(
-    prefill?.intervalSeconds
-      ? INTERVAL_OPTIONS.findIndex((o) => o.seconds === prefill.intervalSeconds)
-      : 2 // default: daily
-  );
-  const [occurrences, setOccurrences] = useState(String(prefill?.occurrences || 5));
-  const [nameInput,   setNameInput]   = useState("");
+  const [mode, setMode] = useState<"onetime" | "recurring">("onetime");
+  const [nameInput, setNameInput] = useState(prefill?.recipient || "");
   const [resolvedAddr, setResolvedAddr] = useState<string | null>(null);
-  const [resolving,   setResolving]   = useState(false);
-  const [resolveErr,  setResolveErr]  = useState<string | null>(null);
-  const [submitErr,   setSubmitErr]   = useState<string | null>(null);
-  const [txHash,      setTxHash]      = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [resolveErr, setResolveErr] = useState<string | null>(null);
+  const [amount, setAmount] = useState(prefill?.amountPerReleaseEth || "1");
+  const [submitErr, setSubmitErr] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
+
+  const nowPlus10 = Math.floor(Date.now() / 1000) + 10 * 60;
+  const defaultStart = toLocalInputs(nowPlus10);
+
+  const [sendDate, setSendDate] = useState(defaultStart.date);
+  const [sendTime, setSendTime] = useState(defaultStart.time);
+
+  const [repeatEvery, setRepeatEvery] = useState("1");
+  const [repeatUnit, setRepeatUnit] = useState("Days");
+  const [untilDate, setUntilDate] = useState(defaultStart.date);
+  const [untilTime, setUntilTime] = useState("23:59");
 
   const { writeContract, isPending } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({
     hash: txHash as `0x${string}` | undefined,
   });
 
-  const intervalOpt = INTERVAL_OPTIONS[intervalIdx] || INTERVAL_OPTIONS[2];
-  const endsAt = Math.floor(Date.now() / 1000) + intervalOpt.seconds * Number(occurrences) + 86400;
-  const totalEth = (parseFloat(amount || "0") * Number(occurrences || "0")).toFixed(6);
+  const startTs = fromLocalInputs(sendDate, sendTime);
+  const untilTs = fromLocalInputs(untilDate, untilTime);
+  const intervalSeconds = UNIT_SECONDS[repeatUnit] || 86400;
+
+  const startTooSoon = startTs < Math.floor(Date.now() / 1000) + 10 * 60;
+  const untilBeforeStart = mode === "recurring" && untilTs <= startTs;
+
+  const cycles = useMemo(() => {
+    if (mode === "onetime") return 1;
+    if (untilBeforeStart || !intervalSeconds) return 0;
+    return Math.max(0, Math.floor((untilTs - startTs) / intervalSeconds) + 1);
+  }, [mode, untilTs, startTs, intervalSeconds, untilBeforeStart]);
+
+  const totalEth = (parseFloat(amount || "0") * cycles).toFixed(6);
+  const canSubmit =
+    !startTooSoon &&
+    !untilBeforeStart &&
+    cycles > 0 &&
+    parseFloat(amount || "0") > 0 &&
+    isConnected &&
+    isCorrectChain;
 
   const resolveUpId = async () => {
     if (!nameInput.trim()) return;
+    if (nameInput.startsWith("0x")) {
+      setResolvedAddr(nameInput);
+      return;
+    }
     setResolving(true);
     setResolveErr(null);
     setResolvedAddr(null);
     try {
       const res = await fetch(`/api/resolve-name?name=${encodeURIComponent(nameInput)}`);
       const data = await res.json();
-      if (data.error) {
-        setResolveErr(data.error);
-      } else {
-        setResolvedAddr(data.address);
-        setRecipient(data.address);
-      }
+      if (data.error) setResolveErr(data.error);
+      else setResolvedAddr(data.address);
     } catch {
       setResolveErr("Resolution failed");
     } finally {
@@ -67,58 +119,57 @@ export function ScheduleForm({ prefill }: { prefill?: PrefillParams }) {
     }
   };
 
-  const handleDeposit = () => {
-    const recipientAddr = resolvedAddr || recipient;
-    if (!isAddress(recipientAddr)) {
-      setSubmitErr("Invalid recipient address");
+  const handleMax = () => {
+    setAmount(availableEth > 0 ? availableEth.toFixed(6) : "0");
+  };
+
+  const handleDeposit = async () => {
+    let recipientAddr = resolvedAddr;
+    if (!recipientAddr) {
+      await resolveUpId();
+      recipientAddr = resolvedAddr;
+    }
+    if (!recipientAddr || !isAddress(recipientAddr)) {
+      setSubmitErr("Could not resolve a valid recipient address");
       return;
     }
-    if (!amount || isNaN(parseFloat(amount))) {
-      setSubmitErr("Invalid amount");
-      return;
-    }
-    const occ = parseInt(occurrences);
-    if (isNaN(occ) || occ < 1) {
-      setSubmitErr("Invalid occurrences");
+    if (!canSubmit) {
+      setSubmitErr("Please fix the highlighted issues above");
       return;
     }
 
     setSubmitErr(null);
     const amountWei = parseEther(amount);
-    const totalWei = amountWei * BigInt(occ);
+    const totalWei = amountWei * BigInt(cycles);
+    const interval = mode === "onetime" ? 1 : intervalSeconds;
+    const endsAt = mode === "onetime" ? startTs + 3600 : untilTs + 3600;
 
     writeContract(
       {
-        address: SCHEDULER_ADDRESS as `0x${string}`,
+        address: SCHEDULER_ADDRESS,
         abi: SCHEDULER_ABI,
         functionName: "deposit",
-        args: [
-          recipientAddr as `0x${string}`,
-          amountWei,
-          BigInt(intervalOpt.seconds),
-          BigInt(occ),
-          BigInt(endsAt),
-        ],
+        args: [recipientAddr as `0x${string}`, amountWei, BigInt(interval), BigInt(cycles), BigInt(endsAt)],
         value: totalWei,
       },
       {
         onSuccess: (hash) => {
           setTxHash(hash);
-          // Register QStash schedule after deposit confirms
           fetch("/api/schedule/create", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               scheduleId: "pending",
-              intervalSeconds: intervalOpt.seconds,
-              occurrences: occ,
+              intervalSeconds: interval,
+              occurrences: cycles,
               owner: address,
             }),
           }).catch(console.warn);
+
+          const summary = `${cycles}× ${amount} ETH to ${nameInput || recipientAddr}`;
+          onSuccess?.(hash, summary);
         },
-        onError: (err) => {
-          setSubmitErr(err.message || "Transaction rejected");
-        },
+        onError: (err) => setSubmitErr(err.message || "Transaction rejected"),
       }
     );
   };
@@ -126,169 +177,182 @@ export function ScheduleForm({ prefill }: { prefill?: PrefillParams }) {
   if (SCHEDULER_ADDRESS === "0x0000000000000000000000000000000000000000") {
     return (
       <div className="border border-yellow-500/20 bg-yellow-500/5 rounded-2xl p-6 text-yellow-400 text-sm">
-        <div className="font-bold mb-2">⚠ Scheduler Not Deployed</div>
-        <p>
-          The Scheduler contract has not been deployed yet. Run the Foundry deploy script and
-          set <code className="bg-white/10 px-1 rounded">SCHEDULER_CONTRACT_ADDRESS</code> in
-          your environment variables.
-        </p>
+        ⚠ Scheduler contract not deployed. Set NEXT_PUBLIC_SCHEDULER_ADDRESS.
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      {/* Recipient */}
-      <div>
-        <label className="block text-xs text-white/40 mb-2 uppercase tracking-widest">
-          Recipient
-        </label>
-        <div className="flex gap-2">
-          <input
-            value={nameInput}
-            onChange={(e) => { setNameInput(e.target.value); setResolvedAddr(null); }}
-            placeholder="alice.up.id or 0x…"
-            className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/30 transition-all"
-          />
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={resolveUpId}
-            disabled={resolving || !nameInput.trim()}
-            className="border border-white/20 text-white/60 px-4 rounded-xl text-sm hover:border-white/40 hover:text-white transition-all disabled:opacity-40"
-          >
-            {resolving ? "…" : "Resolve"}
-          </motion.button>
+    <div className="bg-black border border-white/10 rounded-2xl p-6 w-full max-w-md">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2 text-white font-bold text-lg">
+          <span className="text-orange-400">⏱</span> Schedule Payment
         </div>
-
-        {resolvedAddr && (
-          <div className="mt-2 text-xs text-emerald-400 font-mono">
-            ✓ {resolvedAddr}
-          </div>
-        )}
-        {resolveErr && (
-          <div className="mt-2 text-xs text-red-400">{resolveErr}</div>
-        )}
-
-        {/* Manual 0x address override */}
-        {!resolvedAddr && nameInput.startsWith("0x") && (
-          <div className="mt-2 text-xs text-white/30">Detected 0x address — will send directly</div>
+        {onClose && (
+          <button onClick={onClose} className="text-white/40 hover:text-white text-xl leading-none">
+            ×
+          </button>
         )}
       </div>
 
+      {/* Mode toggle */}
+      <div className="flex gap-2 mb-5">
+        <button
+          onClick={() => setMode("onetime")}
+          className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            mode === "onetime" ? "bg-orange-500 text-white" : "border border-white/15 text-white/50"
+          }`}
+        >
+          One-time
+        </button>
+        <button
+          onClick={() => setMode("recurring")}
+          className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            mode === "recurring" ? "bg-orange-500 text-white" : "border border-white/15 text-white/50"
+          }`}
+        >
+          Recurring
+        </button>
+      </div>
+
+      {/* Recipient */}
+      <label className="block text-xs text-white/40 mb-1.5">Sending to</label>
+      <input
+        value={nameInput}
+        onChange={(e) => { setNameInput(e.target.value); setResolvedAddr(null); }}
+        onBlur={resolveUpId}
+        placeholder="@alice or 0x…"
+        className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-white text-sm mb-1 focus:outline-none focus:border-orange-400/50"
+      />
+      {resolving && <div className="text-xs text-white/30 mb-2">Resolving…</div>}
+      {resolvedAddr && <div className="text-xs text-emerald-400 font-mono mb-2">✓ {resolvedAddr.slice(0, 10)}…{resolvedAddr.slice(-6)}</div>}
+      {resolveErr && <div className="text-xs text-red-400 mb-2">{resolveErr}</div>}
+
       {/* Amount */}
-      <div>
-        <label className="block text-xs text-white/40 mb-2 uppercase tracking-widest">
-          Amount per Release (ETH)
-        </label>
+      <label className="block text-xs text-white/40 mb-1.5 mt-3">Amount per transfer</label>
+      <div className="flex gap-2 mb-1">
         <input
           type="number"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           min="0"
-          step="0.001"
-          className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-white/30 transition-all font-mono"
+          step="0.0001"
+          className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-white text-sm font-mono focus:outline-none focus:border-orange-400/50"
         />
-      </div>
-
-      {/* Interval */}
-      <div>
-        <label className="block text-xs text-white/40 mb-2 uppercase tracking-widest">
-          Interval
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {INTERVAL_OPTIONS.map((opt, i) => (
-            <button
-              key={opt.label}
-              onClick={() => setIntervalIdx(i)}
-              className={`py-2 rounded-xl text-xs font-semibold border transition-all ${
-                intervalIdx === i
-                  ? "bg-white text-black border-white"
-                  : "border-white/15 text-white/50 hover:border-white/30 hover:text-white/80"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+        <button onClick={handleMax} className="px-4 rounded-xl border border-orange-400/40 text-orange-400 text-sm font-bold hover:bg-orange-400/10">
+          Max
+        </button>
+        <div className="px-4 flex items-center rounded-xl border border-white/15 text-white/60 text-sm font-bold">
+          ETH
         </div>
       </div>
+      <div className="text-xs text-white/30 mb-4">Available: {availableEth.toFixed(4)} ETH</div>
 
-      {/* Occurrences */}
-      <div>
-        <label className="block text-xs text-white/40 mb-2 uppercase tracking-widest">
-          Occurrences
-        </label>
-        <input
-          type="number"
-          value={occurrences}
-          onChange={(e) => setOccurrences(e.target.value)}
-          min="1"
-          step="1"
-          className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 transition-all font-mono"
-        />
-      </div>
+      {/* One-time send at */}
+      {mode === "onetime" && (
+        <>
+          <label className="block text-xs text-white/40 mb-1.5">Send at</label>
+          <div className="flex gap-2 mb-1">
+            <input type="date" value={sendDate} onChange={(e) => setSendDate(e.target.value)}
+              className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm" />
+            <input type="time" value={sendTime} onChange={(e) => setSendTime(e.target.value)}
+              className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm" />
+          </div>
+          <div className="text-xs text-white/25 mb-4">⏱ Payment may take 2-3 minutes to reach the destination wallet after this time</div>
+        </>
+      )}
+
+      {/* Recurring config */}
+      {mode === "recurring" && (
+        <>
+          <label className="block text-xs text-white/40 mb-1.5">Start time (first payment goes at this time)</label>
+          <div className="flex gap-2 mb-1">
+            <input type="date" value={sendDate} onChange={(e) => setSendDate(e.target.value)}
+              className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm" />
+            <input type="time" value={sendTime} onChange={(e) => setSendTime(e.target.value)}
+              className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm" />
+          </div>
+          <div className="text-xs text-white/25 mb-4">⏱ Payment may take 2-3 minutes to reach the destination wallet after this time</div>
+
+          <label className="block text-xs text-white/40 mb-1.5">Repeat every</label>
+          <div className="flex gap-2 mb-4">
+            <input
+              type="number"
+              min="1"
+              value={repeatEvery}
+              onChange={(e) => setRepeatEvery(e.target.value)}
+              className="w-16 bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm text-center"
+            />
+            {Object.keys(UNIT_SECONDS).map((u) => (
+              <button
+                key={u}
+                onClick={() => setRepeatUnit(u)}
+                className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                  repeatUnit === u ? "bg-orange-500 text-white border-orange-500" : "border-white/15 text-white/50"
+                }`}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
+
+          <label className="block text-xs text-white/40 mb-1.5">Repeat until</label>
+          <div className="flex gap-2 mb-4">
+            <input type="date" value={untilDate} onChange={(e) => setUntilDate(e.target.value)}
+              className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm" />
+            <input type="time" value={untilTime} onChange={(e) => setUntilTime(e.target.value)}
+              className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm" />
+          </div>
+        </>
+      )}
 
       {/* Summary */}
-      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4">
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <div className="text-white/30 text-xs mb-1">Total deposit</div>
-            <div className="text-white font-mono font-bold">{totalEth} ETH</div>
-          </div>
-          <div>
-            <div className="text-white/30 text-xs mb-1">Schedule</div>
-            <div className="text-white/80 text-xs">
-              {occurrences}× {intervalOpt.label}
-            </div>
-          </div>
-        </div>
+      <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 mb-4">
+        <div className="text-white text-sm mb-1">Total cycles: <b>{cycles}</b></div>
+        <div className="text-white text-sm mb-1">Total deposit needed: <b>{totalEth} ETH</b></div>
+        {startTooSoon && (
+          <div className="text-orange-400 text-xs mt-2">⚠ Pick a time at least 10 minutes from now</div>
+        )}
+        {untilBeforeStart && (
+          <div className="text-orange-400 text-xs mt-2">⚠ "Repeat until" must be after the start time</div>
+        )}
       </div>
 
-      {/* Errors */}
       {submitErr && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm mb-4">
           {submitErr}
         </div>
       )}
 
-      {/* Not connected */}
       {!isConnected && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-yellow-400 text-sm">
-          Connect your wallet to create a schedule.
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-yellow-400 text-sm mb-4">
+          Connect your wallet to schedule a payment.
         </div>
       )}
-
-      {!isCorrectChain && isConnected && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-yellow-400 text-sm">
+      {isConnected && !isCorrectChain && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-yellow-400 text-sm mb-4">
           Switch to GIWA Sepolia (chain ID 91342).
         </div>
       )}
 
-      {/* Submit */}
-      <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={handleDeposit}
-        disabled={isPending || isConfirming || !isConnected || !isCorrectChain}
-        className="w-full bg-white text-black py-3.5 rounded-2xl font-bold text-sm hover:bg-white/90 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
-      >
-        {isPending ? (
-          <>
-            <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-            Sign in Wallet…
-          </>
-        ) : isConfirming ? (
-          <>
-            <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-            Confirming…
-          </>
-        ) : (
-          `Deposit ${totalEth} ETH & Schedule`
+      <div className="flex gap-3">
+        {onClose && (
+          <button onClick={onClose} className="flex-1 border border-white/15 text-white/70 py-3 rounded-xl font-bold text-sm">
+            Cancel
+          </button>
         )}
-      </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleDeposit}
+          disabled={isPending || isConfirming || !canSubmit}
+          className="flex-1 bg-orange-500 text-white py-3 rounded-xl font-bold text-sm disabled:opacity-40"
+        >
+          {isPending ? "Sign in Wallet…" : isConfirming ? "Confirming…" : "Deposit & Schedule"}
+        </motion.button>
+      </div>
 
-      {/* Flashblocks status */}
-      {txHash && <FlashblocksStatus txHash={txHash} />}
+      {txHash && <div className="mt-4"><FlashblocksStatus txHash={txHash} /></div>}
     </div>
   );
 }

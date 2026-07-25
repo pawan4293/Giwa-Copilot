@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAccount } from "wagmi";
 import { TxConfirmModal } from "./TxConfirmModal";
 import { SplitFormModal } from "./SplitFormModal";
+import { ScheduleForm } from "./ScheduleForm";
 
 interface Message {
   role: "user" | "assistant";
@@ -81,6 +82,8 @@ export function ChatWindow() {
     amountEth: string;
   }>({ isOpen: false, to: "", displayName: "", amountEth: "" });
   const [sendCompleted, setSendCompleted] = useState(false);
+  const [scheduleModal, setScheduleModal] = useState<{ isOpen: boolean; prefill?: Record<string, unknown> }>({ isOpen: false });
+const [scheduleCompleted, setScheduleCompleted] = useState(false);
   const [splitModal, setSplitModal] = useState<{ isOpen: boolean; prefill: Record<string, unknown> | null }>({
     isOpen: false,
     prefill: null,
@@ -118,6 +121,20 @@ export function ChatWindow() {
     }
     setSendCompleted(false);
     setSendModal((s) => ({ ...s, isOpen: false }));
+  };
+
+  const handleScheduleSuccess = (txHash: string, summary: string) => {
+    setScheduleCompleted(true);
+    appendSystemMessage(`✅ Schedule created: ${summary}\nTrack it in the [Schedule tab](/schedule) ↗`);
+    setScheduleModal({ isOpen: false });
+  };
+
+  const handleScheduleModalClose = () => {
+    if (!scheduleCompleted) {
+      appendSystemMessage("❌ You cancelled the schedule.");
+    }
+    setScheduleCompleted(false);
+    setScheduleModal({ isOpen: false });
   };
 
   useEffect(() => {
@@ -187,7 +204,7 @@ export function ChatWindow() {
 
       const action = data.pendingAction;
       if (action?.action === "open_schedule_form") {
-        window.location.href = `/schedule?prefill=${encodeURIComponent(JSON.stringify(action.params))}`;
+        setScheduleModal({ isOpen: true, prefill: action.params });
       }
       if (action?.action === "open_send_modal") {
         setSendModal({
@@ -370,6 +387,16 @@ export function ChatWindow() {
         onCreated={handleSplitCreated}
         prefill={splitModal.prefill}
       />
+
+      {scheduleModal.isOpen && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <ScheduleForm
+            prefill={scheduleModal.prefill}
+            onClose={handleScheduleModalClose}
+            onSuccess={handleScheduleSuccess}
+          />
+        </div>
+      )}
     </div>
   );
 }
