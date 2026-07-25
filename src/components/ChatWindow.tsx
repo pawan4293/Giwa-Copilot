@@ -45,7 +45,7 @@ function renderMessageContent(content: string) {
     const match = part.match(/^\[([^\]]*)\]\(([^)]+)\)$/);
     if (match) {
       const url = match[2];
-      const isFullShareLink = url.includes("/split/") || (url.includes("/tx/") === false && match[1] !== "↗");
+      const isFullShareLink = url.includes("/split/") && !url.includes("/activity");
       return (
         <span key={i} className="inline-flex items-center">
           <a

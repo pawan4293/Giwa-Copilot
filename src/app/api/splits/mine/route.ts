@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { splits, splitRecipients } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const mySplits = await db
       .select()
       .from(splits)
-      .where(eq(splits.creatorAddress, address))
+      .where(sql`lower(${splits.creatorAddress}) = ${address}`)
       .orderBy(desc(splits.createdAt));
 
     const results = await Promise.all(
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
         const recipients = await db
           .select()
           .from(splitRecipients)
-          .where(eq(splitRecipients.splitId, split.id));
+          .where(sql`${splitRecipients.splitId} = ${split.id}`);
 
         return {
           id: split.id,
