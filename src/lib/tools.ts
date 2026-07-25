@@ -119,7 +119,7 @@ export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
             description: "Unix timestamp of hard deadline (after which no releases occur)",
           },
         },
-        required: ["recipient", "amountPerReleaseEth", "intervalSeconds", "occurrences", "endsAt"],
+        required: [],
       },
     },
   },
