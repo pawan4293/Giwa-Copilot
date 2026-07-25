@@ -37,6 +37,9 @@ export async function POST(req: NextRequest) {
     while (rounds < MAX_TOOL_ROUNDS) {
       rounds++;
 
+      const lastUserMsg = String(messages[messages.length - 1]?.content || "");
+      const mentionsSchedule = /\bschedul(e|ing)|recurring payment/i.test(lastUserMsg);
+
       const modelsToTry = [GROK_MODEL, ...FALLBACK_MODELS];
       let response;
       let lastErr: unknown;
@@ -47,7 +50,10 @@ export async function POST(req: NextRequest) {
             model,
             messages: conversation,
             tools: TOOLS,
-            tool_choice: "auto",
+            tool_choice:
+              rounds === 1 && mentionsSchedule
+                ? { type: "function", function: { name: "create_schedule" } }
+                : "auto",
           });
           break;
         } catch (err) {

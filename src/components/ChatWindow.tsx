@@ -390,11 +390,13 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
 
       {scheduleModal.isOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <ScheduleForm
-            prefill={scheduleModal.prefill}
-            onClose={handleScheduleModalClose}
-            onSuccess={handleScheduleSuccess}
-          />
+          <div className="w-full max-w-lg">
+            <ScheduleForm
+              prefill={scheduleModal.prefill}
+              onClose={handleScheduleModalClose}
+              onSuccess={handleScheduleSuccess}
+            />
+          </div>
         </div>
       )}
     </div>
