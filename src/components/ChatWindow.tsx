@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAccount } from "wagmi";
 import { TxConfirmModal } from "./TxConfirmModal";
+import { SplitFormModal } from "./SplitFormModal";
 
 interface Message {
   role: "user" | "assistant";
@@ -80,6 +81,22 @@ export function ChatWindow() {
     amountEth: string;
   }>({ isOpen: false, to: "", displayName: "", amountEth: "" });
   const [sendCompleted, setSendCompleted] = useState(false);
+  const [splitModal, setSplitModal] = useState<{ isOpen: boolean; prefill: Record<string, unknown> | null }>({
+    isOpen: false,
+    prefill: null,
+  });
+
+  const handleSplitCreated = (shareUrl: string) => {
+    setSplitModal({ isOpen: false, prefill: null });
+    appendSystemMessage(
+      `Split request created! Each person will owe their share to you.\nShare this link: [↗](${shareUrl})\nTrack who has paid in [Activity → Splits](https://giwa-copilot.vercel.app/activity)`
+    );
+  };
+
+  const handleSplitModalClose = () => {
+    setSplitModal({ isOpen: false, prefill: null });
+    appendSystemMessage("❌ You cancelled the payment request form.");
+  };
 
   const appendSystemMessage = (content: string) => {
     setMessages((prev) => [
@@ -181,7 +198,7 @@ export function ChatWindow() {
         });
       }
       if (action?.action === "open_split_form") {
-        window.location.href = `/split/new?prefill=${encodeURIComponent(JSON.stringify(action.params))}`;
+        setSplitModal({ isOpen: true, prefill: action.params });
       }
     } catch (e) {
       setError("Network error. Please try again.");
@@ -345,6 +362,13 @@ export function ChatWindow() {
         to={sendModal.to}
         displayName={sendModal.displayName}
         amountEth={sendModal.amountEth}
+      />
+
+      <SplitFormModal
+        isOpen={splitModal.isOpen}
+        onClose={handleSplitModalClose}
+        onCreated={handleSplitCreated}
+        prefill={splitModal.prefill}
       />
     </div>
   );
