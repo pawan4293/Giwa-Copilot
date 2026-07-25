@@ -26,10 +26,20 @@ export async function GET(
     .from(splitRecipients)
     .where(eq(splitRecipients.splitId, splitId));
 
+  let creatorName: string | null = null;
+  try {
+    const nameRes = await fetch(`${new URL(req.url).origin}/api/resolve-address?address=${split.creatorAddress}`);
+    const nameData = await nameRes.json();
+    creatorName = nameData.name || null;
+  } catch {
+    // fallback to address only
+  }
+
   const base = {
     description: split.description,
     totalAmountEth: split.totalAmountEth,
     creatorAddress: split.creatorAddress,
+    creatorName,
     deadline: split.deadline,
     recipientCount: recipients.length,
   };

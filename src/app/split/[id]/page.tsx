@@ -9,6 +9,7 @@ interface SplitData {
   description: string;
   totalAmountEth: string;
   creatorAddress: string;
+  creatorName: string | null;
   deadline: string | null;
   recipientCount: number;
   matched: boolean;
@@ -76,6 +77,9 @@ export default function SplitPage() {
       <h1 className="text-2xl font-bold text-white mb-2">{data.description}</h1>
       <p className="text-white/40 text-sm mb-8">
         Total: {data.totalAmountEth} ETH · Split {data.recipientCount} ways
+        <br />
+        Requested by{" "}
+        {data.creatorName || `${data.creatorAddress.slice(0, 6)}…${data.creatorAddress.slice(-4)}`}
       </p>
 
       {!isConnected && (

@@ -22,21 +22,41 @@ const EXAMPLE_PROMPTS = [
 
 const STORAGE_KEY = "giwa-copilot-chat-history";
 
+function CopyLinkButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => {
+        navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      className="ml-1 text-xs text-white/40 hover:text-white/80 transition-colors"
+      title="Copy link"
+    >
+      {copied ? "✅" : "📋"}
+    </button>
+  );
+}
+
 function renderMessageContent(content: string) {
   const parts = content.split(/(\[[^\]]*\]\([^)]+\))/g);
   return parts.map((part, i) => {
     const match = part.match(/^\[([^\]]*)\]\(([^)]+)\)$/);
     if (match) {
+      const url = match[2];
+      const isFullShareLink = url.includes("/split/") || (url.includes("/tx/") === false && match[1] !== "↗");
       return (
-        <a
-          key={i}
-          href={match[2]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-400 hover:text-blue-300 underline"
-        >
-          {match[1]}
-        </a>
+        <span key={i} className="inline-flex items-center">
+          <a
+            href={url}
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline break-all"
+          >
+            {isFullShareLink ? url : match[1]}
+          </a>
+          <CopyLinkButton url={url} />
+        </span>
       );
     }
     return <span key={i}>{part}</span>;
