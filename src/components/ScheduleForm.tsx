@@ -153,18 +153,35 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
         value: totalWei,
       },
       {
-        onSuccess: (hash) => {
+       onSuccess: async (hash) => {
           setTxHash(hash);
-          fetch("/api/schedule/create", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              scheduleId: "pending",
-              intervalSeconds: interval,
-              occurrences: cycles,
-              owner: address,
-            }),
-          }).catch(console.warn);
+          try {
+            const { publicClient } = await import("@/lib/viemClient");
+            const receipt = await publicClient.waitForTransactionReceipt({ hash });
+            const depositedLog = receipt.logs.find(
+              (log) => log.address.toLowerCase() === SCHEDULER_ADDRESS.toLowerCase()
+            );
+            const realScheduleId = depositedLog?.topics[1]
+              ? BigInt(depositedLog.topics[1]).toString()
+              : null;
+
+            if (realScheduleId) {
+              fetch("/api/schedule/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  scheduleId: realScheduleId,
+                  intervalSeconds: interval,
+                  occurrences: cycles,
+                  owner: address,
+                }),
+              }).catch(console.warn);
+            } else {
+              setSubmitErr("Deposit succeeded but couldn't read the schedule ID — QStash job not registered. Contact support with tx hash: " + hash);
+            }
+          } catch (e) {
+            console.warn("Failed to register QStash job:", e);
+          }
 
           const summary = `${cycles}× ${amount} ETH to ${nameInput || recipientAddr}`;
           onSuccess?.(hash, summary);

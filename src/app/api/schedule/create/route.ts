@@ -31,9 +31,8 @@ export async function POST(req: NextRequest) {
     const result = await qstash.publishJSON({
       url:   triggerUrl,
       delay: intervalSeconds,
-      body:  { scheduleId, owner },
+      body:  { scheduleId, owner, intervalSeconds },
       retries: 3,
-      // Schedule repeats are handled by each trigger call re-registering
     });
 
     return NextResponse.json({

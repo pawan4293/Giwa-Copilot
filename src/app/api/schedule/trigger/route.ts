@@ -29,14 +29,14 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 2. Parse payload ───────────────────────────────────────────
-  let payload: { scheduleId?: string; owner?: string };
+  let payload: { scheduleId?: string; owner?: string; intervalSeconds?: number };
   try {
     payload = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { scheduleId } = payload;
+  const { scheduleId, intervalSeconds } = payload;
   if (!scheduleId) {
     return NextResponse.json({ error: "Missing scheduleId in payload" }, { status: 400 });
   }
@@ -88,6 +88,31 @@ export async function POST(req: NextRequest) {
     // Wait for confirmation
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
+    // Re-check schedule state after release — if still active, register the next trigger
+    let reregistered = false;
+    if (intervalSeconds) {
+      const updated = await publicClient.readContract({
+        address: schedulerAddress,
+        abi: SCHEDULER_ABI,
+        functionName: "schedules",
+        args: [BigInt(scheduleId)],
+      }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
+
+      const [, , , , , , , , stillActive] = updated;
+
+      if (stillActive) {
+        const { getQStashClient, getTriggerUrl } = await import("@/lib/qstash");
+        const qstash = getQStashClient();
+        await qstash.publishJSON({
+          url: getTriggerUrl(),
+          delay: intervalSeconds,
+          body: { scheduleId, owner: payload.owner, intervalSeconds },
+          retries: 3,
+        });
+        reregistered = true;
+      }
+    }
+
     return NextResponse.json({
       success:    true,
       scheduleId,
@@ -95,6 +120,7 @@ export async function POST(req: NextRequest) {
       blockNumber: receipt.blockNumber.toString(),
       status:      receipt.status,
       explorerUrl: `https://sepolia-explorer.giwa.io/tx/${txHash}`,
+      reregistered,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
