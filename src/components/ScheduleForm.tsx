@@ -183,10 +183,10 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="bg-black border border-white/10 rounded-2xl p-6 w-full max-w-md">
+    <div className="bg-black border border-white/10 rounded-2xl p-7 w-full">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2 text-white font-bold text-lg">
-          <span className="text-orange-400">⏱</span> Schedule Payment
+          <span className="text-white/40">⏱</span> Schedule Payment
         </div>
         {onClose && (
           <button onClick={onClose} className="text-white/40 hover:text-white text-xl leading-none">
@@ -200,7 +200,7 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
         <button
           onClick={() => setMode("onetime")}
           className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-            mode === "onetime" ? "bg-orange-500 text-white" : "border border-white/15 text-white/50"
+            mode === "onetime" ? "bg-white text-black" : "border border-white/15 text-white/50"
           }`}
         >
           One-time
@@ -208,7 +208,7 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
         <button
           onClick={() => setMode("recurring")}
           className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-            mode === "recurring" ? "bg-orange-500 text-white" : "border border-white/15 text-white/50"
+            mode === "recurring" ? "bg-white text-black" : "border border-white/15 text-white/50"
           }`}
         >
           Recurring
@@ -222,7 +222,7 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
         onChange={(e) => { setNameInput(e.target.value); setResolvedAddr(null); }}
         onBlur={resolveUpId}
         placeholder="@alice or 0x…"
-        className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-white text-sm mb-1 focus:outline-none focus:border-orange-400/50"
+        className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-white text-sm mb-1 focus:outline-none focus:border-white/30"
       />
       {resolving && <div className="text-xs text-white/30 mb-2">Resolving…</div>}
       {resolvedAddr && <div className="text-xs text-emerald-400 font-mono mb-2">✓ {resolvedAddr.slice(0, 10)}…{resolvedAddr.slice(-6)}</div>}
@@ -237,9 +237,9 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
           onChange={(e) => setAmount(e.target.value)}
           min="0"
           step="0.0001"
-          className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-white text-sm font-mono focus:outline-none focus:border-orange-400/50"
+          className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-4 py-3 text-white text-sm font-mono focus:outline-none focus:border-white/30"
         />
-        <button onClick={handleMax} className="px-4 rounded-xl border border-orange-400/40 text-orange-400 text-sm font-bold hover:bg-orange-400/10">
+        <button onClick={handleMax} className="px-4 rounded-xl border border-white/20 text-white/70 text-sm font-bold hover:border-white/40">
           Max
         </button>
         <div className="px-4 flex items-center rounded-xl border border-white/15 text-white/60 text-sm font-bold">
@@ -288,7 +288,7 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
                 key={u}
                 onClick={() => setRepeatUnit(u)}
                 className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                  repeatUnit === u ? "bg-orange-500 text-white border-orange-500" : "border-white/15 text-white/50"
+                  repeatUnit === u ? "bg-white text-black border-white" : "border-white/15 text-white/50"
                 }`}
               >
                 {u}
@@ -307,14 +307,14 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
       )}
 
       {/* Summary */}
-      <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 mb-4">
+      <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4 mb-4">
         <div className="text-white text-sm mb-1">Total cycles: <b>{cycles}</b></div>
         <div className="text-white text-sm mb-1">Total deposit needed: <b>{totalEth} ETH</b></div>
         {startTooSoon && (
-          <div className="text-orange-400 text-xs mt-2">⚠ Pick a time at least 10 minutes from now</div>
+          <div className="text-yellow-400 text-xs mt-2">⚠ Pick a time at least 10 minutes from now</div>
         )}
         {untilBeforeStart && (
-          <div className="text-orange-400 text-xs mt-2">⚠ "Repeat until" must be after the start time</div>
+          <div className="text-yellow-400 text-xs mt-2">⚠ "Repeat until" must be after the start time</div>
         )}
       </div>
 
@@ -346,7 +346,7 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
           whileTap={{ scale: 0.98 }}
           onClick={handleDeposit}
           disabled={isPending || isConfirming || !canSubmit}
-          className="flex-1 bg-orange-500 text-white py-3 rounded-xl font-bold text-sm disabled:opacity-40"
+          className="flex-1 bg-white text-black py-3 rounded-xl font-bold text-sm hover:bg-white/90 disabled:opacity-40"
         >
           {isPending ? "Sign in Wallet…" : isConfirming ? "Confirming…" : "Deposit & Schedule"}
         </motion.button>
