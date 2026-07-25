@@ -3,7 +3,7 @@
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance } from "wagmi";
 import { giwaSepolia } from "@/lib/viemClient";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatEther } from "viem";
 
 export function WalletConnect() {
@@ -18,6 +18,19 @@ export function WalletConnect() {
     chainId: giwaSepolia.id,
     query: { enabled: !!address && chainId === giwaSepolia.id },
   });
+
+  const [upId, setUpId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!address) {
+      setUpId(null);
+      return;
+    }
+    fetch(`/api/resolve-address?address=${address}`)
+      .then((r) => r.json())
+      .then((d) => setUpId(d.name || null))
+      .catch(() => setUpId(null));
+  }, [address]);
 
   const isWrongChain = isConnected && chainId !== giwaSepolia.id;
 
@@ -106,6 +119,19 @@ export function WalletConnect() {
           >
             <div className="text-xs text-white/40 mb-1">Connected to</div>
             <div className="text-white font-semibold text-sm mb-3">GIWA Sepolia (91342)</div>
+            <div className="text-xs text-white/40 mb-1">UP ID</div>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-white font-semibold text-sm">{upId || "-"}</span>
+              {upId && (
+                <button
+                  onClick={() => navigator.clipboard.writeText(upId)}
+                  className="text-white/30 hover:text-white/70 text-xs"
+                  title="Copy UP ID"
+                >
+                  📋
+                </button>
+              )}
+            </div>
             <div className="text-xs text-white/40 mb-1">Address</div>
             <div className="text-white/80 font-mono text-xs mb-4 break-all">{address}</div>
             {balance && (
