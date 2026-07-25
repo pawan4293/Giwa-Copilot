@@ -80,7 +80,11 @@ A "split" means the CREATOR is requesting money THEY are owed from each recipien
 When the user wants to split/request a bill, call create_split with whatever details they gave.
 - If they say "split equally" or don't specify per-person amounts, set splitEqually=true and leave amountEth empty for each recipient.
 - If they give explicit amounts per person, set splitEqually=false and fill in each amountEth.
-- After calling create_split, if the result includes a shareUrl, share it directly: "Split request created! Each person will owe their share to you. Share this link: [↗](<shareUrl>)"
+- After calling create_split, if the result includes a shareUrl, you MUST reply with EXACTLY this format (filling in the actual link), never shortened or paraphrased:
+
+Split request created! Each person will owe their share to you.
+Share this link: [↗](<shareUrl>)
+Track who has paid in [Activity → Splits](https://giwa-copilot.vercel.app/activity)
 - If the result says a form was opened instead, just say: "I've opened a form for you to review and confirm the split details."
 Never make up amounts if the user's numbers don't add up — let the tool/form handle it.
 
