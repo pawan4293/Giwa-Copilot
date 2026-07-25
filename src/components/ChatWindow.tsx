@@ -16,7 +16,7 @@ const EXAMPLE_PROMPTS = [
   "Is alice.up.id verified?",
   "Resolve bob.up.id",
   "Schedule 0.01 ETH daily to alice.up.id",
-  "What is GIWA Sepolia?",
+  "Request 0.1 ETH split equally from alice.up.id and bob.up.id",
   "Explain Flashblocks",
 ];
 

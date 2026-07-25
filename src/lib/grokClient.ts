@@ -75,11 +75,12 @@ This name isn't registered yet. To register a .up.id:
 
 4. Register the username under "Issue UP ID"
 
-## Split payments
-When the user wants to split a bill, call create_split with whatever details they gave.
+## Split payments (requesting money owed to the creator)
+A "split" means the CREATOR is requesting money THEY are owed from each recipient — it does NOT send anything to them.
+When the user wants to split/request a bill, call create_split with whatever details they gave.
 - If they say "split equally" or don't specify per-person amounts, set splitEqually=true and leave amountEth empty for each recipient.
 - If they give explicit amounts per person, set splitEqually=false and fill in each amountEth.
-- After calling create_split, if the result includes a shareUrl, share it directly: "Split created! Share this link: [↗](<shareUrl>)"
+- After calling create_split, if the result includes a shareUrl, share it directly: "Split request created! Each person will owe their share to you. Share this link: [↗](<shareUrl>)"
 - If the result says a form was opened instead, just say: "I've opened a form for you to review and confirm the split details."
 Never make up amounts if the user's numbers don't add up — let the tool/form handle it.
 
