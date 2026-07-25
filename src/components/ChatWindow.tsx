@@ -17,6 +17,7 @@ const EXAMPLE_PROMPTS = [
   "Resolve bob.up.id",
   "Schedule 0.01 ETH daily to alice.up.id",
   "Request 0.1 ETH split equally from alice.up.id and bob.up.id",
+  "Open a payment request form",
   "Explain Flashblocks",
 ];
 

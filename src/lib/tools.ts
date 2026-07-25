@@ -159,6 +159,10 @@ export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
             type: "boolean",
             description: "True if the user wants the total split equally among all recipients",
           },
+          forceForm: {
+            type: "boolean",
+            description: "True if the user explicitly asked to open the split/payment request form, regardless of how much detail they gave",
+          },
         },
         required: ["description", "recipients", "splitEqually"],
       },
@@ -366,7 +370,8 @@ export async function executeTool(
 
         const allAmountsGiven = recipients.every((r) => r.amountEth && r.amountEth.trim() !== "");
         const isClear =
-          (splitEqually && totalAmountEth) || (!splitEqually && allAmountsGiven);
+          !args.forceForm &&
+          ((splitEqually && totalAmountEth) || (!splitEqually && allAmountsGiven));
 
         if (!isClear) {
           // Ambiguous — let the frontend open a form to complete the details
