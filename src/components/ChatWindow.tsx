@@ -199,6 +199,9 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
     setError(null);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -206,7 +209,10 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
           messages: [...messages, userMsg].map(({ role, content }) => ({ role, content })),
           connectedAddress: isConnected ? address : null,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const data = await res.json();
 
@@ -242,7 +248,11 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
         setBulkModal({ isOpen: true, recipients: action.recipients });
       }
     } catch (e) {
-      setError("Network error. Please try again.");
+      if (e instanceof Error && e.name === "AbortError") {
+        setError("This is taking too long — try simplifying your request (e.g. fewer recipients at once) or try again.");
+      } else {
+        setError("Network error. Please try again.");
+      }
       console.error(e);
     } finally {
       setLoading(false);
