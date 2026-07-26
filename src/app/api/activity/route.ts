@@ -55,9 +55,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const explorerRes = await fetch(
-      `https://sepolia-explorer.giwa.io/api/v2/addresses/${address}/transactions`
-    );
+    const [explorerRes, internalRes] = await Promise.all([
+      fetch(`https://sepolia-explorer.giwa.io/api/v2/addresses/${address}/transactions`),
+      fetch(`https://sepolia-explorer.giwa.io/api/v2/addresses/${address}/internal-transactions`),
+    ]);
     if (!explorerRes.ok) {
       return NextResponse.json(
         { error: `Explorer API returned ${explorerRes.status}`, events: [] },
@@ -67,10 +68,26 @@ export async function GET(req: NextRequest) {
 
     const explorerData = await explorerRes.json();
     const items: BlockscoutLogItem[] = explorerData.items || [];
+    const internalData = await internalRes.json().catch(() => ({ items: [] }));
+    const internalItems: BlockscoutLogItem[] = internalData.items || [];
 
-    const events = items
+    const normalEvents = items.map((item) => ({
+      type: item.method || "Transfer",
+      txHash: item.hash,
+      blockNumber: String(item.block_number),
+      args: {
+        from: item.from?.hash || "",
+        to: item.to?.hash || "",
+        valueWei: item.value,
+        timestamp: item.timestamp,
+      },
+      explorerUrl: `https://sepolia-explorer.giwa.io/tx/${item.hash}`,
+    }));
+
+    const internalEvents = internalItems
+      .filter((item) => item.value && item.value !== "0")
       .map((item) => ({
-        type: item.method || "Transfer",
+        type: "BulkSend transfer",
         txHash: item.hash,
         blockNumber: String(item.block_number),
         args: {
@@ -80,8 +97,11 @@ export async function GET(req: NextRequest) {
           timestamp: item.timestamp,
         },
         explorerUrl: `https://sepolia-explorer.giwa.io/tx/${item.hash}`,
-      }))
-      .sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
+      }));
+
+    const events = [...normalEvents, ...internalEvents].sort(
+      (a, b) => Number(b.blockNumber) - Number(a.blockNumber)
+    );
 
     return NextResponse.json({
       address,
