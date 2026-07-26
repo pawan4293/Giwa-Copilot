@@ -249,7 +249,7 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
       }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
-        setError("This is taking too long — try simplifying your request (e.g. fewer recipients at once) or try again.");
+        setError("This is taking too long — the AI service may be busy. Please try again in a moment.");
       } else {
         setError("Network error. Please try again.");
       }
