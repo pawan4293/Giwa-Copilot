@@ -200,7 +200,7 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
 
       const res = await fetch("/api/chat", {
         method: "POST",
