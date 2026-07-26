@@ -61,6 +61,12 @@ export const DOJANG_SCROLL_ABI = parseAbi([
   "function getVerifiedAddressAttestationUid(address addr, bytes32 attesterId) external view returns (bytes32)",
 ]);
 
+// BatchSend — deployed separately (address comes from BATCHSEND_CONTRACT_ADDRESS env var)
+export const BATCHSEND_ABI = parseAbi([
+  "function batchSend(address[] recipients, uint256[] amounts) external payable",
+  "event BatchSent(address indexed sender, uint256 totalAmount, uint256 recipientCount)",
+]);
+
 // Scheduler — deployed separately (address comes from SCHEDULER_CONTRACT_ADDRESS env var)
 export const SCHEDULER_ABI = parseAbi([
   "function deposit(address recipient, uint256 amountPerRelease, uint256 interval, uint256 occurrences, uint256 endsAt) external payable returns (uint256 id)",
@@ -83,6 +89,15 @@ export const EAS_ABI = parseAbi([
 // Helper: get scheduler address from env (server-side) or return zero address
 export function getSchedulerAddress(): `0x${string}` {
   const addr = process.env.SCHEDULER_CONTRACT_ADDRESS;
+  if (!addr || addr === "0x0000000000000000000000000000000000000000") {
+    return "0x0000000000000000000000000000000000000000";
+  }
+  return addr as `0x${string}`;
+}
+
+// Helper: get BatchSend address from env (server-side) or return zero address
+export function getBatchSendAddress(): `0x${string}` {
+  const addr = process.env.BATCHSEND_CONTRACT_ADDRESS;
   if (!addr || addr === "0x0000000000000000000000000000000000000000") {
     return "0x0000000000000000000000000000000000000000";
   }

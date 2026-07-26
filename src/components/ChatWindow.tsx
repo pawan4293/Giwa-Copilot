@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAccount } from "wagmi";
 import { TxConfirmModal } from "./TxConfirmModal";
 import { SplitFormModal } from "./SplitFormModal";
+import { BulkSendModal } from "./BulkSendModal";
 import { ScheduleForm } from "./ScheduleForm";
 
 interface Message {
@@ -88,6 +89,26 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
     isOpen: false,
     prefill: null,
   });
+  const [bulkModal, setBulkModal] = useState<{
+    isOpen: boolean;
+    recipients: { identifier: string; address: string; amountEth: string }[];
+  }>({ isOpen: false, recipients: [] });
+  const [bulkCompleted, setBulkCompleted] = useState(false);
+
+  const handleBulkSuccess = (txHash: string) => {
+    setBulkCompleted(true);
+    appendSystemMessage(
+      `✅ Bulk payment sent successfully to ${bulkModal.recipients.length} recipients.\nHash: ${txHash} [↗](https://sepolia-explorer.giwa.io/tx/${txHash})`
+    );
+  };
+
+  const handleBulkModalClose = () => {
+    if (!bulkCompleted) {
+      appendSystemMessage("❌ You cancelled the bulk payment. Nothing was sent.");
+    }
+    setBulkCompleted(false);
+    setBulkModal({ isOpen: false, recipients: [] });
+  };
 
   const handleSplitCreated = (shareUrl: string) => {
     setSplitModal({ isOpen: false, prefill: null });
@@ -216,6 +237,9 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
       }
       if (action?.action === "open_split_form") {
         setSplitModal({ isOpen: true, prefill: action.params });
+      }
+      if (action?.action === "open_bulk_send_modal") {
+        setBulkModal({ isOpen: true, recipients: action.recipients });
       }
     } catch (e) {
       setError("Network error. Please try again.");
@@ -399,6 +423,13 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
           </div>
         </div>
       )}
+
+      <BulkSendModal
+        isOpen={bulkModal.isOpen}
+        onClose={handleBulkModalClose}
+        onSuccess={handleBulkSuccess}
+        recipients={bulkModal.recipients}
+      />
     </div>
   );
 }

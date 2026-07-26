@@ -80,6 +80,11 @@ This name isn't registered yet. To register a .up.id:
 
 4. Register the username under "Issue UP ID"
 
+## Bulk payments (sending to multiple people at once — real money leaves the sender)
+When the user wants to send different (or equal) amounts to multiple people in ONE transaction (e.g. "send 0.01 to alice.up.id and 0.02 to bob.up.id", "pay everyone on this list"), call resolve_name for each .up.id recipient first, then call bulk_send with all recipients' resolved addresses and amounts.
+This is fundamentally different from a split: bulk_send actually sends real ETH out from the connected wallet to each recipient in one transaction. NEVER confuse this with create_split — a split REQUESTS money owed to the creator, bulk_send SENDS money out.
+After calling bulk_send, tell the user "I've opened a confirmation dialog for a bulk payment to N recipients — please review and sign in your wallet" and nothing more. Never claim the payment already happened.
+
 ## Split payments (requesting money owed to the creator)
 A "split" means the CREATOR is requesting money THEY are owed from each recipient — it does NOT send anything to them.
 When the user wants to split/request a bill, call create_split with whatever details they gave.

@@ -123,6 +123,36 @@ export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
       },
     },
   },
+ {
+    type: "function",
+    function: {
+      name: "bulk_send",
+      description:
+        "Prepare a single one-time transaction that sends different (or equal) amounts of ETH to multiple recipients at once, " +
+        "using the BatchSend contract. This is a real SEND (money leaves the sender's wallet to each recipient), " +
+        "NOT a request/split. Always call resolve_name first for any .up.id recipients. " +
+        "This does NOT send anything by itself — it only opens a confirmation dialog.",
+      parameters: {
+        type: "object",
+        properties: {
+          recipients: {
+            type: "array",
+            description: "List of recipients, each with a resolved 0x address and exact ETH amount to send them",
+            items: {
+              type: "object",
+              properties: {
+                identifier: { type: "string", description: ".up.id name or address as typed by the user" },
+                address: { type: "string", description: "Resolved 0x address" },
+                amountEth: { type: "string", description: "Exact ETH amount for this recipient" },
+              },
+              required: ["identifier", "address", "amountEth"],
+            },
+          },
+        },
+        required: ["recipients"],
+      },
+    },
+  },
   {
     type: "function",
     function: {
@@ -360,6 +390,14 @@ export async function executeTool(
         return JSON.stringify({
           action: "open_schedule_form",
           params: args,
+        });
+      }
+
+      case "bulk_send": {
+        const recipients = args.recipients as { identifier: string; address: string; amountEth: string }[];
+        return JSON.stringify({
+          action: "open_bulk_send_modal",
+          recipients,
         });
       }
 
