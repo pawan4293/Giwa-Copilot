@@ -9,7 +9,8 @@ import { getSchedulerAddress } from "@/lib/contracts";
 // Chain is always the source of truth — no local database
 
 interface BlockscoutLogItem {
-  hash: string;
+  hash?: string;
+  transaction_hash?: string;
   block_number: number;
   to?: { hash?: string };
   from?: { hash?: string };
@@ -85,19 +86,22 @@ export async function GET(req: NextRequest) {
     }));
 
     const internalEvents = internalItems
-      .filter((item) => item.value && item.value !== "0")
-      .map((item) => ({
-        type: "BulkSend transfer",
-        txHash: item.hash,
-        blockNumber: String(item.block_number),
-        args: {
-          from: item.from?.hash || "",
-          to: item.to?.hash || "",
-          valueWei: item.value,
-          timestamp: item.timestamp,
-        },
-        explorerUrl: `https://sepolia-explorer.giwa.io/tx/${item.hash}`,
-      }));
+      .filter((item) => item.value && item.value !== "0" && (item.hash || item.transaction_hash))
+      .map((item) => {
+        const hash = item.hash || item.transaction_hash!;
+        return {
+          type: "BulkSend transfer",
+          txHash: hash,
+          blockNumber: String(item.block_number),
+          args: {
+            from: item.from?.hash || "",
+            to: item.to?.hash || "",
+            valueWei: item.value,
+            timestamp: item.timestamp,
+          },
+          explorerUrl: `https://sepolia-explorer.giwa.io/tx/${hash}`,
+        };
+      });
 
     const events = [...normalEvents, ...internalEvents].sort(
       (a, b) => Number(b.blockNumber) - Number(a.blockNumber)

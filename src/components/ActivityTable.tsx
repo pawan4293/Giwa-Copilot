@@ -18,6 +18,7 @@ const TYPE_COLORS: Record<string, string> = {
   Released:  "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
   Cancelled: "text-red-400 bg-red-400/10 border-red-400/20",
   Transfer:  "text-white/70 bg-white/[0.06] border-white/20",
+  "BulkSend transfer": "text-purple-400 bg-purple-400/10 border-purple-400/20",
 };
 
 export function ActivityTable() {
@@ -82,7 +83,7 @@ export function ActivityTable() {
 
   useEffect(() => {
     const counterparties = events
-      .filter((e) => e.type === "Transfer")
+      .filter((e) => e.type === "Transfer" || e.type === "BulkSend transfer")
       .map((e) =>
         e.args.from?.toLowerCase() === address?.toLowerCase() ? e.args.to : e.args.from
       )
@@ -158,7 +159,7 @@ export function ActivityTable() {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span
-                  className={`text-xs font-bold border rounded-full px-2.5 py-0.5 ${TYPE_COLORS[event.type]}`}
+                  className={`text-xs font-bold border rounded-full px-2.5 py-0.5 ${TYPE_COLORS[event.type] || "text-white/70 bg-white/[0.06] border-white/20"}`}
                 >
                   {event.type}
                 </span>
@@ -166,14 +167,16 @@ export function ActivityTable() {
                   Block #{event.blockNumber}
                 </span>
               </div>
-              <a
-                href={event.explorerUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-white/30 hover:text-white/70 transition-colors font-mono"
-              >
-                {event.txHash.slice(0, 8)}…{event.txHash.slice(-6)} ↗
-              </a>
+              {event.txHash && (
+                <a
+                  href={event.explorerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-white/30 hover:text-white/70 transition-colors font-mono"
+                >
+                  {event.txHash.slice(0, 8)}…{event.txHash.slice(-6)} ↗
+                </a>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
@@ -236,7 +239,7 @@ export function ActivityTable() {
                 </>
               )}
 
-              {event.type === "Transfer" && (
+              {(event.type === "Transfer" || event.type === "BulkSend transfer") && (
                 <>
                   <div>
                     <div className="text-white/30 mb-1">
