@@ -27,10 +27,10 @@ export function BulkSendModal({ isOpen, onClose, onSuccess, recipients }: Props)
 
   const { writeContract, isPending } = useWriteContract();
 
-  const totalEth = useMemo(
-    () => recipients.reduce((sum, r) => sum + parseFloat(r.amountEth || "0"), 0),
-    [recipients]
-  );
+  const totalEth = useMemo(() => {
+    const sum = recipients.reduce((acc, r) => acc + parseFloat(r.amountEth || "0"), 0);
+    return parseFloat(sum.toFixed(8)).toString();
+  }, [recipients]);
 
   const handleConfirm = () => {
     const invalid = recipients.find((r) => !isAddress(r.address));

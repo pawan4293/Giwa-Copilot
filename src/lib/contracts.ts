@@ -97,7 +97,7 @@ export function getSchedulerAddress(): `0x${string}` {
 
 // Helper: get BatchSend address from env (server-side) or return zero address
 export function getBatchSendAddress(): `0x${string}` {
-  const addr = process.env.BATCHSEND_CONTRACT_ADDRESS;
+  const addr = process.env.NEXT_PUBLIC_BATCHSEND_ADDRESS;
   if (!addr || addr === "0x0000000000000000000000000000000000000000") {
     return "0x0000000000000000000000000000000000000000";
   }
