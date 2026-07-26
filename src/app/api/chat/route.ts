@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
 
           const result = await executeTool(fn.name, args, baseUrl, connectedAddress ?? null);
 
-          if (fn.name === "send_eth" || fn.name === "create_schedule" || fn.name === "cancel_schedule" || fn.name === "create_split") {
+          if (fn.name === "send_eth" || fn.name === "create_schedule" || fn.name === "cancel_schedule" || fn.name === "create_split" || fn.name === "bulk_send") {
             try {
               pendingAction = JSON.parse(result);
             } catch {
