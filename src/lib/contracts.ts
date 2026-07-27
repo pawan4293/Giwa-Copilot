@@ -69,7 +69,7 @@ export const BATCHSEND_ABI = parseAbi([
 
 // Scheduler — deployed separately (address comes from SCHEDULER_CONTRACT_ADDRESS env var)
 export const SCHEDULER_ABI = parseAbi([
-  "function deposit(address recipient, uint256 amountPerRelease, uint256 interval, uint256 occurrences, uint256 endsAt) external payable returns (uint256 id)",
+  "function deposit(address recipient, uint256 amountPerRelease, uint256 firstDelay, uint256 interval, uint256 occurrences, uint256 endsAt) external payable returns (uint256 id)",
   "function release(uint256 id) external",
   "function cancel(uint256 id) external",
   "function remainingBalance(uint256 id) external view returns (uint256)",

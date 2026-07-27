@@ -141,7 +141,9 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
     setSubmitErr(null);
     const amountWei = parseEther(amount);
     const totalWei = amountWei * BigInt(cycles);
-    const interval = mode === "onetime" ? 1 : intervalSeconds;
+    const now = Math.floor(Date.now() / 1000);
+    const firstDelay = Math.max(60, startTs - now);
+    const interval = mode === "onetime" ? firstDelay : intervalSeconds;
     const endsAt = mode === "onetime" ? startTs + 3600 : untilTs + 3600;
 
     writeContract(
@@ -149,7 +151,7 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
         address: SCHEDULER_ADDRESS,
         abi: SCHEDULER_ABI,
         functionName: "deposit",
-        args: [recipientAddr as `0x${string}`, amountWei, BigInt(interval), BigInt(cycles), BigInt(endsAt)],
+        args: [recipientAddr as `0x${string}`, amountWei, BigInt(firstDelay), BigInt(interval), BigInt(cycles), BigInt(endsAt)],
         value: totalWei,
       },
       {
