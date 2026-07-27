@@ -186,6 +186,15 @@ export function ScheduleForm({ prefill, onClose, onSuccess }: Props) {
           }
 
           const summary = `${cycles}× ${amount} ETH to ${nameInput || recipientAddr}`;
+
+          // Reset the form now that the deposit succeeded
+          setNameInput("");
+          setResolvedAddr(null);
+          setAmount(prefill?.amountPerReleaseEth || "1");
+          const resetDefaults = toLocalInputs(Math.floor(Date.now() / 1000) + 10 * 60);
+          setSendDate(resetDefaults.date);
+          setSendTime(resetDefaults.time);
+
           onSuccess?.(hash, summary);
         },
         onError: (err) => setSubmitErr(err.message || "Transaction rejected"),
