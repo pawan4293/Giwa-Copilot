@@ -18,3 +18,20 @@ export const splitRecipients = pgTable("split_recipients", {
   paid: boolean("paid").default(false).notNull(),
   paidTxHash: text("paid_tx_hash"),
 });
+
+export const bulkSends = pgTable("bulk_sends", {
+  id: serial("id").primaryKey(),
+  senderAddress: text("sender_address").notNull(),
+  description: text("description"),
+  totalAmountEth: numeric("total_amount_eth").notNull(),
+  txHash: text("tx_hash").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const bulkSendRecipients = pgTable("bulk_send_recipients", {
+  id: serial("id").primaryKey(),
+  bulkSendId: integer("bulk_send_id").notNull(),
+  identifier: text("identifier").notNull(),
+  resolvedAddress: text("resolved_address").notNull(),
+  amountEth: numeric("amount_eth").notNull(),
+});
