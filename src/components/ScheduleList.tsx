@@ -77,39 +77,37 @@ export function ScheduleList() {
         ),
       ] as string[];
 
-      // Read on-chain state for each schedule
-      const rows: ScheduleRow[] = [];
+      // Read on-chain state for each schedule — in parallel, not one at a time
+      const { publicClient } = await import("@/lib/viemClient");
+      const results = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const result = await publicClient.readContract({
+              address: SCHEDULER_ADDRESS as `0x${string}`,
+              abi: SCHEDULER_ABI,
+              functionName: "schedules",
+              args: [BigInt(id)],
+            }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
 
-      for (const id of ids) {
-        try {
-          const { publicClient } = await import("@/lib/viemClient");
-          const result = await publicClient.readContract({
-            address: SCHEDULER_ADDRESS as `0x${string}`,
-            abi: SCHEDULER_ABI,
-            functionName: "schedules",
-            args: [BigInt(id)],
-          }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
+            const [owner, recipient, amountPerRelease, interval, occurrences, released, nextReleaseAt, endsAt, active] = result;
 
-          const [owner, recipient, amountPerRelease, interval, occurrences, released, nextReleaseAt, endsAt, active] = result;
+            return {
+              id, owner, recipient,
+              amountPerRelease: amountPerRelease.toString(),
+              interval:         interval.toString(),
+              occurrences:      occurrences.toString(),
+              released:         released.toString(),
+              nextReleaseAt:    nextReleaseAt.toString(),
+              endsAt:           endsAt.toString(),
+              active,
+            } as ScheduleRow;
+          } catch {
+            return null;
+          }
+        })
+      );
 
-          rows.push({
-            id,
-            owner,
-            recipient,
-            amountPerRelease: amountPerRelease.toString(),
-            interval:         interval.toString(),
-            occurrences:      occurrences.toString(),
-            released:         released.toString(),
-            nextReleaseAt:    nextReleaseAt.toString(),
-            endsAt:           endsAt.toString(),
-            active,
-          });
-        } catch {
-          // Skip if can't read
-        }
-      }
-
-      setSchedules(rows);
+      setSchedules(results.filter((r): r is ScheduleRow => r !== null));
     } catch (e) {
       setError(String(e));
     } finally {
@@ -263,18 +261,49 @@ export function ScheduleList() {
           <h3 className="text-xs text-white/30 uppercase tracking-widest mb-3">
             Completed / Cancelled
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {inactive.map((s) => (
               <div
                 key={s.id}
-                className="border border-white/5 rounded-xl p-3 bg-white/[0.01] opacity-50"
+                className="border border-white/5 rounded-2xl p-4 bg-white/[0.01] opacity-60"
               >
-                <div className="flex justify-between text-xs text-white/40">
-                  <span>Schedule #{s.id}</span>
-                  <span>
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="text-white/70 font-semibold text-sm">Schedule #{s.id}</div>
+                    <div className="text-white/30 font-mono text-xs mt-0.5">
+                      → {s.recipient.slice(0, 10)}…{s.recipient.slice(-6)}
+                    </div>
+                  </div>
+                  <span className="text-xs text-white/30">
                     {s.released}/{s.occurrences} released
                   </span>
                 </div>
+                <div className="grid grid-cols-2 gap-3 text-xs mb-2">
+                  <div>
+                    <div className="text-white/20 mb-1">Per release</div>
+                    <div className="text-white/60 font-mono">
+                      {formatEther(BigInt(s.amountPerRelease))} ETH
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-white/20 mb-1">Interval</div>
+                    <div className="text-white/60">
+                      every {Number(s.interval) >= 86400
+                        ? `${Math.round(Number(s.interval) / 86400)}d`
+                        : Number(s.interval) >= 3600
+                        ? `${Math.round(Number(s.interval) / 3600)}h`
+                        : `${Math.round(Number(s.interval) / 60)}m`}
+                    </div>
+                  </div>
+                </div>
+                
+                  <a href={`https://sepolia-explorer.giwa.io/address/${SCHEDULER_ADDRESS}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-white/30 hover:text-white/60 transition-colors"
+                >
+                  View on Explorer ↗
+                </a>
               </div>
             ))}
           </div>

@@ -123,18 +123,23 @@ export async function GET(req: NextRequest) {
       const latestBlock = await publicClient.getBlockNumber();
       const CHUNK = BigInt(9000); // stay safely under typical free-RPC getLogs range limits
 
-      const logs = [];
+      const ranges: { from: bigint; to: bigint }[] = [];
       for (let from = SCHEDULER_DEPLOY_BLOCK; from <= latestBlock; from += CHUNK) {
         const to = from + CHUNK - BigInt(1) > latestBlock ? latestBlock : from + CHUNK - BigInt(1);
-        const chunkLogs = await publicClient.getLogs({
-          address: schedulerAddress,
-          event: depositedAbi,
-          args: { owner: address as `0x${string}` },
-          fromBlock: from,
-          toBlock: to,
-        });
-        logs.push(...chunkLogs);
+        ranges.push({ from, to });
       }
+      const chunkResults = await Promise.all(
+        ranges.map(({ from, to }) =>
+          publicClient.getLogs({
+            address: schedulerAddress,
+            event: depositedAbi,
+            args: { owner: address as `0x${string}` },
+            fromBlock: from,
+            toBlock: to,
+          })
+        )
+      );
+      const logs = chunkResults.flat();
 
       scheduleEvents = logs.map((log) => ({
         type: "Deposited",
