@@ -120,13 +120,21 @@ export async function GET(req: NextRequest) {
     }> = [];
     try {
       const depositedAbi = getAbiItem({ abi: SCHEDULER_ABI, name: "Deposited" });
-      const logs = await publicClient.getLogs({
-        address: schedulerAddress,
-        event: depositedAbi,
-        args: { owner: address as `0x${string}` },
-        fromBlock: SCHEDULER_DEPLOY_BLOCK,
-        toBlock: "latest",
-      });
+      const latestBlock = await publicClient.getBlockNumber();
+      const CHUNK = BigInt(9000); // stay safely under typical free-RPC getLogs range limits
+
+      const logs = [];
+      for (let from = SCHEDULER_DEPLOY_BLOCK; from <= latestBlock; from += CHUNK) {
+        const to = from + CHUNK - BigInt(1) > latestBlock ? latestBlock : from + CHUNK - BigInt(1);
+        const chunkLogs = await publicClient.getLogs({
+          address: schedulerAddress,
+          event: depositedAbi,
+          args: { owner: address as `0x${string}` },
+          fromBlock: from,
+          toBlock: to,
+        });
+        logs.push(...chunkLogs);
+      }
 
       scheduleEvents = logs.map((log) => ({
         type: "Deposited",
