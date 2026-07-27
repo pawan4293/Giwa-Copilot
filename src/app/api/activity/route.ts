@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAddress, formatEther } from "viem";
 import { publicClient } from "@/lib/viemClient";
 import { getSchedulerAddress } from "@/lib/contracts";
+import { getAbiItem } from "viem";
+import { SCHEDULER_ABI } from "@/lib/contracts";
+
+// Block the Scheduler contract was deployed at — safe to start log scans here,
+// avoids scanning from genesis (which hits RPC block-range limits).
+const SCHEDULER_DEPLOY_BLOCK = BigInt(31279192);
 
 // Returns either:
 // - balance: live ETH balance for an address
@@ -103,7 +109,45 @@ export async function GET(req: NextRequest) {
         };
       });
 
-    const events = [...normalEvents, ...internalEvents].sort(
+   // Real Deposited events from the Scheduler contract, decoded properly —
+    // this is what powers "My Schedules" (owner-filtered, so cancel/refund is possible).
+    let scheduleEvents: Array<{
+      type: string;
+      txHash: string;
+      blockNumber: string;
+      args: Record<string, string>;
+      explorerUrl: string;
+    }> = [];
+    try {
+      const depositedAbi = getAbiItem({ abi: SCHEDULER_ABI, name: "Deposited" });
+      const logs = await publicClient.getLogs({
+        address: schedulerAddress,
+        event: depositedAbi,
+        args: { owner: address as `0x${string}` },
+        fromBlock: SCHEDULER_DEPLOY_BLOCK,
+        toBlock: "latest",
+      });
+
+      scheduleEvents = logs.map((log) => ({
+        type: "Deposited",
+        txHash: log.transactionHash,
+        blockNumber: String(log.blockNumber),
+        args: {
+          id: log.args.id?.toString() ?? "",
+          owner: log.args.owner ?? "",
+          recipient: log.args.recipient ?? "",
+          amountPerRelease: log.args.amountPerRelease?.toString() ?? "0",
+          occurrences: log.args.occurrences?.toString() ?? "0",
+          totalDeposited: log.args.totalDeposited?.toString() ?? "0",
+        },
+        explorerUrl: `https://sepolia-explorer.giwa.io/tx/${log.transactionHash}`,
+      }));
+    } catch (e) {
+      console.warn("Failed to fetch Deposited events:", e);
+      // Don't fail the whole request if this part breaks — just show fewer events
+    }
+
+    const events = [...normalEvents, ...internalEvents, ...scheduleEvents].sort(
       (a, b) => Number(b.blockNumber) - Number(a.blockNumber)
     );
 
