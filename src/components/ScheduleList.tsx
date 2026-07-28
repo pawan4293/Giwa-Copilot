@@ -56,6 +56,11 @@ function formatIntervalLabel(intervalSeconds: number, occurrences: number): stri
   return `every ${intervalSeconds}s`;
 }
 
+function getStatusLabel(released: number, occurrences: number): { text: string; color: string } {
+  if (released >= occurrences) return { text: "Completed", color: "text-emerald-400" };
+  return { text: "Cancelled & Refunded", color: "text-red-400" };
+}
+
 export function ScheduleList() {
   const { address, isConnected } = useAccount();
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
@@ -288,7 +293,10 @@ export function ScheduleList() {
                         {s.recipient.slice(0, 10)}…{s.recipient.slice(-6)}
                       </div>
                     </div>
-                    <span className="text-xs text-white/30">{s.released}/{s.occurrences} released</span>
+                    <span className={`text-xs font-bold ${getStatusLabel(Number(s.released), Number(s.occurrences)).color}`}>
+                    {getStatusLabel(Number(s.released), Number(s.occurrences)).text}
+                    <span className="text-white/30 font-normal ml-2">{s.released}/{s.occurrences} released</span>
+                  </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-xs mb-2">
                     <div>
