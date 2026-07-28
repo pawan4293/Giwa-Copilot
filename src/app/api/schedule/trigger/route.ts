@@ -53,9 +53,9 @@ export async function POST(req: NextRequest) {
       abi: SCHEDULER_ABI,
       functionName: "schedules",
       args: [BigInt(scheduleId)],
-    }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
+    }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
 
-    const [, , , , , , nextReleaseAt, , active] = schedule;
+    const [, , , , , , , nextReleaseAt, , active] = schedule;
 
     if (!active) {
       return NextResponse.json({
@@ -96,9 +96,9 @@ export async function POST(req: NextRequest) {
         abi: SCHEDULER_ABI,
         functionName: "schedules",
         args: [BigInt(scheduleId)],
-      }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
+      }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
 
-      const [, , , , , , , , stillActive] = updated;
+      const [, , , , , , , , , stillActive] = updated;
 
       if (stillActive) {
         const { getQStashClient, getTriggerUrl } = await import("@/lib/qstash");

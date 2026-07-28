@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
         abi: SCHEDULER_ABI,
         functionName: "schedules",
         args: [id],
-      }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
+      }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
 
-      const [, , , , , , nextReleaseAt, , active] = schedule;
+      const [, , , , , , , nextReleaseAt, , active] = schedule;
 
       if (!active || now < nextReleaseAt) {
         results[id.toString()] = "skipped";
