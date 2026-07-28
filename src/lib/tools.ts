@@ -395,6 +395,11 @@ export async function executeTool(
 
       case "bulk_send": {
         const recipients = args.recipients as { identifier: string; address: string; amountEth: string }[];
+        if (!recipients || recipients.length === 0) {
+          return JSON.stringify({
+            error: "No recipients given yet. Ask the user to list who to pay and how much for each person.",
+          });
+        }
         return JSON.stringify({
           action: "open_bulk_send_modal",
           recipients,
