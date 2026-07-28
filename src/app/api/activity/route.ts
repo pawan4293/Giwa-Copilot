@@ -7,7 +7,7 @@ import { SCHEDULER_ABI } from "@/lib/contracts";
 
 // Block the Scheduler contract was deployed at — safe to start log scans here,
 // avoids scanning from genesis (which hits RPC block-range limits).
-const SCHEDULER_DEPLOY_BLOCK = BigInt(31279192);
+const SCHEDULER_DEPLOY_BLOCK = BigInt(31796539);
 
 // Returns either:
 // - balance: live ETH balance for an address
@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
         const to = from + CHUNK - BigInt(1) > latestBlock ? latestBlock : from + CHUNK - BigInt(1);
         ranges.push({ from, to });
       }
-      const chunkResults = await Promise.all(
+      const chunkResults = await Promise.allSettled(
         ranges.map(({ from, to }) =>
           publicClient.getLogs({
             address: schedulerAddress,
@@ -139,7 +139,14 @@ export async function GET(req: NextRequest) {
           })
         )
       );
-      const logs = chunkResults.flat();
+     const logs = [];
+      for (const result of chunkResults) {
+        if (result.status === "fulfilled") {
+          logs.push(...result.value);
+        } else {
+          console.warn("A chunk of getLogs failed:", result.reason);
+        }
+      }
 
       scheduleEvents = logs.map((log) => ({
         type: "Deposited",
