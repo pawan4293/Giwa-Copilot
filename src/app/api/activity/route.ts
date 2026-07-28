@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, formatEther } from "viem";
 import { publicClient } from "@/lib/viemClient";
-import { getSchedulerAddress } from "@/lib/contracts";
+import { getSchedulerAddress, getBatchSendAddress } from "@/lib/contracts";
 import { getAbiItem } from "viem";
 import { SCHEDULER_ABI } from "@/lib/contracts";
 
@@ -78,18 +78,28 @@ export async function GET(req: NextRequest) {
     const internalData = await internalRes.json().catch(() => ({ items: [] }));
     const internalItems: BlockscoutLogItem[] = internalData.items || [];
 
-    const normalEvents = items.map((item) => ({
-      type: item.method || "Transfer",
-      txHash: item.hash,
-      blockNumber: String(item.block_number),
-      args: {
-        from: item.from?.hash || "",
-        to: item.to?.hash || "",
-        valueWei: item.value,
-        timestamp: item.timestamp,
-      },
-      explorerUrl: `https://sepolia-explorer.giwa.io/tx/${item.hash}`,
-    }));
+    const batchSendAddr = getBatchSendAddress().toLowerCase();
+    const schedulerAddrLower = schedulerAddress.toLowerCase();
+
+    const normalEvents = items
+      .filter((item) => {
+        const to = item.to?.hash?.toLowerCase();
+        // Exclude raw contract-call rows for Scheduler/BatchSend — these are already
+        // represented as decoded Deposited/Cancelled/BulkSend transfer events below.
+        return to !== schedulerAddrLower && to !== batchSendAddr;
+      })
+      .map((item) => ({
+        type: item.method || "Transfer",
+        txHash: item.hash,
+        blockNumber: String(item.block_number),
+        args: {
+          from: item.from?.hash || "",
+          to: item.to?.hash || "",
+          valueWei: item.value,
+          timestamp: item.timestamp,
+        },
+        explorerUrl: `https://sepolia-explorer.giwa.io/tx/${item.hash}`,
+      }));
 
     const internalEvents = internalItems
       .filter((item) => item.value && item.value !== "0" && (item.hash || item.transaction_hash))

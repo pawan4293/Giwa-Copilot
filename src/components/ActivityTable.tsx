@@ -13,6 +13,14 @@ interface EventRow {
   explorerUrl: string;
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  Deposited: "Schedule Created",
+  Released: "Schedule Payment",
+  Cancelled: "Schedule Cancelled",
+  Transfer: "Transfer",
+  "BulkSend transfer": "Bulk Payment",
+};
+
 const TYPE_COLORS: Record<string, string> = {
   Deposited: "text-blue-400 bg-blue-400/10 border-blue-400/20",
   Released:  "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
@@ -161,7 +169,7 @@ export function ActivityTable() {
                 <span
                   className={`text-xs font-bold border rounded-full px-2.5 py-0.5 ${TYPE_COLORS[event.type] || "text-white/70 bg-white/[0.06] border-white/20"}`}
                 >
-                  {event.type}
+                  {TYPE_LABELS[event.type] || event.type}
                 </span>
                 <span className="text-white/30 text-xs">
                   Block #{event.blockNumber}
