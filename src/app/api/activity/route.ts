@@ -101,23 +101,41 @@ export async function GET(req: NextRequest) {
         explorerUrl: `https://sepolia-explorer.giwa.io/tx/${item.hash}`,
       }));
 
-    const internalEvents = internalItems
-      .filter((item) => item.value && item.value !== "0" && (item.hash || item.transaction_hash))
-      .map((item) => {
+    const filteredInternal = internalItems.filter(
+      (item) => item.value && item.value !== "0" && (item.hash || item.transaction_hash)
+    );
+
+    const internalEvents = await Promise.all(
+      filteredInternal.map(async (item) => {
         const hash = item.hash || item.transaction_hash!;
+        let realSender = item.from?.hash || "";
+
+        // The internal transfer's "from" is the BatchSend contract itself, not the
+        // person who triggered it — fetch the parent transaction to get the real sender.
+        try {
+          const parentRes = await fetch(`https://sepolia-explorer.giwa.io/api/v2/transactions/${hash}`);
+          const parentData = await parentRes.json();
+          if (parentData.from?.hash) {
+            realSender = parentData.from.hash;
+          }
+        } catch {
+          // fall back to contract address if this lookup fails
+        }
+
         return {
           type: "BulkSend transfer",
           txHash: hash,
           blockNumber: String(item.block_number),
           args: {
-            from: item.from?.hash || "",
+            from: realSender,
             to: item.to?.hash || "",
             valueWei: item.value,
             timestamp: item.timestamp,
           },
           explorerUrl: `https://sepolia-explorer.giwa.io/tx/${hash}`,
         };
-      });
+      })
+    );
 
    // Real Deposited events from the Scheduler contract, decoded properly —
     // this is what powers "My Schedules" (owner-filtered, so cancel/refund is possible).
