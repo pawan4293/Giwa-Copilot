@@ -96,9 +96,9 @@ export function ScheduleList() {
               abi: SCHEDULER_ABI,
               functionName: "schedules",
               args: [BigInt(id)],
-            }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
+            }) as readonly [string, string, bigint, bigint, bigint, bigint, bigint, bigint, bigint, boolean];
 
-            const [owner, recipient, amountPerRelease, interval, occurrences, released, nextReleaseAt, endsAt, active] = result;
+            const [owner, recipient, amountPerRelease, , interval, occurrences, released, nextReleaseAt, endsAt, active] = result;
 
             return {
               id, owner, recipient,

@@ -74,7 +74,7 @@ export const SCHEDULER_ABI = parseAbi([
   "function cancel(uint256 id) external",
   "function remainingBalance(uint256 id) external view returns (uint256)",
   "function nextId() external view returns (uint256)",
-  "function schedules(uint256 id) external view returns (address owner, address recipient, uint256 amountPerRelease, uint256 interval, uint256 occurrences, uint256 released, uint256 nextReleaseAt, uint256 endsAt, bool active)",
+  "function schedules(uint256 id) external view returns (address owner, address recipient, uint256 amountPerRelease, uint256 remainingBalance, uint256 interval, uint256 occurrences, uint256 released, uint256 nextReleaseAt, uint256 endsAt, bool active)",
   "event Deposited(uint256 indexed id, address indexed owner, address indexed recipient, uint256 amountPerRelease, uint256 interval, uint256 occurrences, uint256 totalDeposited, uint256 firstReleaseAt, uint256 endsAt)",
   "event Released(uint256 indexed id, address indexed recipient, uint256 amount, uint256 releaseIndex, uint256 timestamp)",
   "event Cancelled(uint256 indexed id, address indexed owner, uint256 refundAmount, uint256 timestamp)",
