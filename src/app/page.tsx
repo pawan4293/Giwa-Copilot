@@ -72,18 +72,18 @@ function GridLines() {
 
 const EXAMPLE_PROMPTS = [
   { text: "Check if alice.up.id is verified", icon: "✓" },
-  { text: "What's the balance of 0x1234…?",  icon: "◎" },
-  { text: "Schedule 0.01 ETH daily",          icon: "⏱" },
-  { text: "Resolve bob.up.id to an address",  icon: "↗" },
+  { text: "Send 0.01 ETH to alice.up.id",     icon: "→" },
+  { text: "Schedule payment",                 icon: "⏱" },
+  { text: "Bulk payment form",                icon: "⇄" },
+  { text: "Open a payment request form",      icon: "🧾" },
   { text: "Explain GIWA Flashblocks",         icon: "⚡" },
-  { text: "Show my activity history",         icon: "📋" },
 ];
 
 const FEATURES = [
   {
     icon: "✦",
     title: "AI-Powered Copilot",
-    desc: "Grok-powered chat that calls real on-chain tools. Never invents balances or addresses.",
+    desc: "Groq-powered chat that calls real on-chain tools. Never invents balances or addresses.",
   },
   {
     icon: "◎",
@@ -98,7 +98,7 @@ const FEATURES = [
   {
     icon: "⏱",
     title: "Recurring Scheduler",
-    desc: "Deploy the trustless Scheduler contract, deposit ETH, set it-and-forget with QStash keepers.",
+    desc: "Deposit ETH into the deployed Scheduler contract and set it-and-forget — a keeper wallet triggers each release automatically.",
   },
   {
     icon: "↗",
@@ -109,6 +109,16 @@ const FEATURES = [
     icon: "📋",
     title: "On-Chain Activity",
     desc: "All history comes from contract events — the chain is always the source of truth.",
+  },
+  {
+    icon: "⇄",
+    title: "Bulk Send",
+    desc: "Send different amounts to multiple recipients in a single transaction.",
+  },
+  {
+    icon: "🧾",
+    title: "Split Payments",
+    desc: "Request money owed back from multiple people, with a shareable link and live paid-status tracking.",
   },
 ];
 
