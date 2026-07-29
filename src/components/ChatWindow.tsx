@@ -97,7 +97,9 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
   const [bulkCompleted, setBulkCompleted] = useState(false);
   const [bulkFormOpen, setBulkFormOpen] = useState(false);
 
-  const handleBulkFormConfirm = (recipients: { identifier: string; address: string; amountEth: string }[]) => {
+  const handleBulkFormConfirm = (
+    recipients: { identifier: string; address: string; amountEth: string }[]
+  ) => {
     setBulkFormOpen(false);
     setBulkModal({ isOpen: true, recipients });
   };

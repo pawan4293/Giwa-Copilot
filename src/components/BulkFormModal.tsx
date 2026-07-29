@@ -11,40 +11,73 @@ interface RecipientRow {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (recipients: { identifier: string; address: string; amountEth: string }[]) => void;
+  onConfirm: (
+    recipients: { identifier: string; address: string; amountEth: string }[],
+    description: string
+  ) => void;
 }
 
 export function BulkFormModal({ isOpen, onClose, onConfirm }: Props) {
-  const [recipients, setRecipients] = useState<RecipientRow[]>([{ identifier: "", amountEth: "" }]);
+  const [description, setDescription] = useState("");
+  const [splitEqually, setSplitEqually] = useState(true);
+  const [totalAmountEth, setTotalAmountEth] = useState("");
+  const [recipients, setRecipients] = useState<RecipientRow[]>([]);
+  const [newIdentifier, setNewIdentifier] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setRecipients([{ identifier: "", amountEth: "" }]);
+      setDescription("");
+      setSplitEqually(true);
+      setTotalAmountEth("");
+      setRecipients([]);
+      setNewIdentifier("");
       setError(null);
     }
   }, [isOpen]);
 
-  const updateRecipient = (i: number, field: keyof RecipientRow, value: string) => {
-    setRecipients((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  const addRecipient = () => {
+    if (!newIdentifier.trim()) return;
+    setRecipients((prev) => [...prev, { identifier: newIdentifier.trim(), amountEth: "" }]);
+    setNewIdentifier("");
   };
 
-  const addRecipient = () => setRecipients((prev) => [...prev, { identifier: "", amountEth: "" }]);
+  const updateAmount = (i: number, value: string) => {
+    setRecipients((prev) => prev.map((r, idx) => (idx === i ? { ...r, amountEth: value } : r)));
+  };
+
   const removeRecipient = (i: number) => setRecipients((prev) => prev.filter((_, idx) => idx !== i));
 
-  const handleNext = async () => {
+  const handleSubmit = async () => {
     setError(null);
 
-    if (recipients.some((r) => !r.identifier || !r.amountEth)) {
-      setError("Fill in an identifier and amount for every recipient.");
+    if (recipients.length === 0) {
+      setError("Add at least one recipient.");
       return;
+    }
+
+    let finalRecipients: RecipientRow[];
+
+    if (splitEqually) {
+      if (!totalAmountEth || parseFloat(totalAmountEth) <= 0) {
+        setError("Enter a total amount to split equally.");
+        return;
+      }
+      const each = (parseFloat(totalAmountEth) / recipients.length).toString();
+      finalRecipients = recipients.map((r) => ({ ...r, amountEth: each }));
+    } else {
+      if (recipients.some((r) => !r.amountEth || parseFloat(r.amountEth) <= 0)) {
+        setError("Enter a valid amount for every recipient.");
+        return;
+      }
+      finalRecipients = recipients;
     }
 
     setResolving(true);
     try {
       const resolved = await Promise.all(
-        recipients.map(async (r) => {
+        finalRecipients.map(async (r) => {
           if (r.identifier.startsWith("0x")) {
             return { identifier: r.identifier, address: r.identifier, amountEth: r.amountEth };
           }
@@ -56,7 +89,7 @@ export function BulkFormModal({ isOpen, onClose, onConfirm }: Props) {
           return { identifier: r.identifier, address: data.address, amountEth: r.amountEth };
         })
       );
-      onConfirm(resolved);
+      onConfirm(resolved, description);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -90,38 +123,91 @@ export function BulkFormModal({ isOpen, onClose, onConfirm }: Props) {
                 </button>
               </div>
 
-              <label className="text-white/40 text-xs">Recipients &amp; amounts</label>
-              {recipients.map((r, i) => (
-                <div key={i} className="flex gap-2 mt-2">
+              <label className="text-white/40 text-xs">Description (optional)</label>
+              <input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Monthly payout"
+                className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2 text-white mb-4 mt-1"
+              />
+
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setSplitEqually(true)}
+                  className={`flex-1 rounded-xl py-2 text-sm font-bold ${splitEqually ? "bg-white text-black" : "border border-white/15 text-white/50"}`}
+                >
+                  Equal Split
+                </button>
+                <button
+                  onClick={() => setSplitEqually(false)}
+                  className={`flex-1 rounded-xl py-2 text-sm font-bold ${!splitEqually ? "bg-white text-black" : "border border-white/15 text-white/50"}`}
+                >
+                  Custom Amounts
+                </button>
+              </div>
+
+              {splitEqually && (
+                <>
+                  <label className="text-white/40 text-xs">Total amount (ETH)</label>
                   <input
-                    value={r.identifier}
-                    onChange={(e) => updateRecipient(i, "identifier", e.target.value)}
-                    placeholder="alice.up.id or 0x..."
-                    className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2 text-white"
+                    value={totalAmountEth}
+                    onChange={(e) => setTotalAmountEth(e.target.value)}
+                    placeholder="0.0"
+                    className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2 text-white mb-4 mt-1"
                   />
-                  <input
-                    value={r.amountEth}
-                    onChange={(e) => updateRecipient(i, "amountEth", e.target.value)}
-                    placeholder="ETH"
-                    className="w-24 bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2 text-white"
-                  />
-                  <button onClick={() => removeRecipient(i)} className="text-white/30 hover:text-red-400 px-2">
-                    ✕
-                  </button>
+                </>
+              )}
+
+              <label className="text-white/40 text-xs">Recipients ({recipients.length})</label>
+              <div className="flex gap-2 mt-1 mb-2">
+                <input
+                  value={newIdentifier}
+                  onChange={(e) => setNewIdentifier(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addRecipient()}
+                  placeholder="alice.up.id or 0x..."
+                  className="flex-1 bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2 text-white"
+                />
+                <button
+                  onClick={addRecipient}
+                  className="w-10 h-10 flex-shrink-0 bg-white text-black rounded-xl font-bold hover:bg-white/90"
+                >
+                  +
+                </button>
+              </div>
+
+              {recipients.length === 0 ? (
+                <div className="text-white/20 text-xs text-center py-3">
+                  Add recipients using the field above.
                 </div>
-              ))}
-              <button onClick={addRecipient} className="text-blue-400 text-sm mt-2">
-                + Add recipient
-              </button>
+              ) : (
+                <div className="space-y-2">
+                  {recipients.map((r, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <span className="flex-1 text-white/70 text-sm truncate">{r.identifier}</span>
+                      {!splitEqually && (
+                        <input
+                          value={r.amountEth}
+                          onChange={(e) => updateAmount(i, e.target.value)}
+                          placeholder="ETH"
+                          className="w-24 bg-white/[0.04] border border-white/15 rounded-xl px-2 py-1.5 text-white text-sm"
+                        />
+                      )}
+                      <button onClick={() => removeRecipient(i)} className="text-white/30 hover:text-red-400 px-1">
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {error && <div className="text-red-400 text-sm mt-4">{error}</div>}
 
               <button
-                onClick={handleNext}
+                onClick={handleSubmit}
                 disabled={resolving}
                 className="w-full bg-white text-black rounded-xl py-3 font-bold mt-6 hover:bg-white/90 disabled:opacity-40"
               >
-                {resolving ? "Resolving names…" : "Next: Review & Sign"}
+                {resolving ? "Resolving names…" : `Send Bulk Payment (${recipients.length} recipients)`}
               </button>
             </div>
           </motion.div>
