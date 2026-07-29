@@ -93,15 +93,17 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
   const [bulkModal, setBulkModal] = useState<{
     isOpen: boolean;
     recipients: { identifier: string; address: string; amountEth: string }[];
-  }>({ isOpen: false, recipients: [] });
+    description: string;
+  }>({ isOpen: false, recipients: [], description: "" });
   const [bulkCompleted, setBulkCompleted] = useState(false);
   const [bulkFormOpen, setBulkFormOpen] = useState(false);
 
   const handleBulkFormConfirm = (
-    recipients: { identifier: string; address: string; amountEth: string }[]
+    recipients: { identifier: string; address: string; amountEth: string }[],
+    description: string
   ) => {
     setBulkFormOpen(false);
-    setBulkModal({ isOpen: true, recipients });
+    setBulkModal({ isOpen: true, recipients, description });
   };
 
   const handleBulkFormClose = () => {
@@ -121,7 +123,7 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
       appendSystemMessage("❌ You cancelled the bulk payment. Nothing was sent.");
     }
     setBulkCompleted(false);
-    setBulkModal({ isOpen: false, recipients: [] });
+    setBulkModal({ isOpen: false, recipients: [], description: "" });
   };
 
   const handleSplitCreated = (shareUrl: string) => {
@@ -259,7 +261,7 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
         setSplitModal({ isOpen: true, prefill: action.params });
       }
       if (action?.action === "open_bulk_send_modal") {
-        setBulkModal({ isOpen: true, recipients: action.recipients });
+        setBulkModal({ isOpen: true, recipients: action.recipients, description: action.description || "" });
       }
       if (action?.action === "open_bulk_form") {
         setBulkFormOpen(true);
@@ -456,6 +458,7 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
         onClose={handleBulkModalClose}
         onSuccess={handleBulkSuccess}
         recipients={bulkModal.recipients}
+        description={bulkModal.description}
       />
 
       <BulkFormModal

@@ -153,8 +153,15 @@ export function BulkFormModal({ isOpen, onClose, onConfirm }: Props) {
                     value={totalAmountEth}
                     onChange={(e) => setTotalAmountEth(e.target.value)}
                     placeholder="0.0"
-                    className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2 text-white mb-4 mt-1"
+                    className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3 py-2 text-white mt-1"
                   />
+                  {totalAmountEth && recipients.length > 0 && (
+                    <div className="text-white/40 text-xs mt-1 mb-4">
+                      {(parseFloat(totalAmountEth) / recipients.length).toFixed(8).replace(/\.?0+$/, "")} ETH each
+                      × {recipients.length} recipients
+                    </div>
+                  )}
+                  {!(totalAmountEth && recipients.length > 0) && <div className="mb-4" />}
                 </>
               )}
 
@@ -184,13 +191,19 @@ export function BulkFormModal({ isOpen, onClose, onConfirm }: Props) {
                   {recipients.map((r, i) => (
                     <div key={i} className="flex gap-2 items-center">
                       <span className="flex-1 text-white/70 text-sm truncate">{r.identifier}</span>
-                      {!splitEqually && (
+                      {!splitEqually ? (
                         <input
                           value={r.amountEth}
                           onChange={(e) => updateAmount(i, e.target.value)}
                           placeholder="ETH"
                           className="w-24 bg-white/[0.04] border border-white/15 rounded-xl px-2 py-1.5 text-white text-sm"
                         />
+                      ) : (
+                        <span className="text-white/50 text-xs font-mono">
+                          {totalAmountEth
+                            ? (parseFloat(totalAmountEth) / recipients.length).toFixed(8).replace(/\.?0+$/, "")
+                            : "0"} ETH
+                        </span>
                       )}
                       <button onClick={() => removeRecipient(i)} className="text-white/30 hover:text-red-400 px-1">
                         ✕

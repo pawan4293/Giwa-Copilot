@@ -18,10 +18,11 @@ interface Props {
   onClose: () => void;
   onSuccess?: (txHash: string) => void;
   recipients: Recipient[];
+  description?: string;
 }
 
-export function BulkSendModal({ isOpen, onClose, onSuccess, recipients }: Props) {
-  const { isConnected } = useAccount();
+export function BulkSendModal({ isOpen, onClose, onSuccess, recipients, description }: Props) {
+  const { isConnected, address: senderAddress } = useAccount();
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,9 +61,28 @@ export function BulkSendModal({ isOpen, onClose, onSuccess, recipients }: Props)
         value: total,
       },
       {
-        onSuccess: (hash) => {
+        onSuccess: async (hash) => {
           setTxHash(hash);
           onSuccess?.(hash);
+
+          try {
+            await fetch("/api/bulk-sends/create", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                senderAddress,
+                description: description || null,
+                recipients: recipients.map((r) => ({
+                  identifier: r.identifier,
+                  address: r.address,
+                  amountEth: r.amountEth,
+                })),
+                txHash: hash,
+              }),
+            });
+          } catch {
+            // recording failure shouldn't block the UI — the on-chain tx already succeeded
+          }
         },
         onError: (err) => {
           setError(err.message || "Transaction rejected");
@@ -98,7 +118,7 @@ export function BulkSendModal({ isOpen, onClose, onSuccess, recipients }: Props)
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 p-4 max-h-[90vh] overflow-y-auto"
           >
             <div className="bg-black border border-white/20 rounded-3xl p-6 shadow-2xl">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-2">
                 <h2 className="text-lg font-bold text-white">Confirm Bulk Payment</h2>
                 <button
                   onClick={handleClose}
@@ -106,8 +126,12 @@ export function BulkSendModal({ isOpen, onClose, onSuccess, recipients }: Props)
                   className="text-white/30 hover:text-white text-xl transition-colors disabled:opacity-30"
                 >
                   ✕
-                </button>
+               </button>
               </div>
+
+              {description && (
+                <div className="text-white/40 text-sm mb-4">{description}</div>
+              )}
 
               <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
                 {recipients.map((r, i) => (
