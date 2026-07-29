@@ -126,6 +126,16 @@ export const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
  {
     type: "function",
     function: {
+      name: "open_bulk_form",
+      description:
+        "Open a blank bulk payment form for the user to manually enter recipients and amounts. " +
+        "Use this when the user asks to 'open a bulk payment form' or similar without giving any recipients yet.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "bulk_send",
       description:
         "Prepare a single one-time transaction that sends different (or equal) amounts of ETH to multiple recipients at once, " +
@@ -391,6 +401,10 @@ export async function executeTool(
           action: "open_schedule_form",
           params: args,
         });
+      }
+
+      case "open_bulk_form": {
+        return JSON.stringify({ action: "open_bulk_form" });
       }
 
       case "bulk_send": {

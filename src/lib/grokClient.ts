@@ -81,7 +81,7 @@ This name isn't registered yet. To register a .up.id:
 4. Register the username under "Issue UP ID"
 
 ## Bulk payments (sending to multiple people at once — real money leaves the sender)
-There is currently no separate "bulk payment form" — bulk sends only work when the user directly lists recipients and amounts in their message. If the user asks to "open a bulk payment form" or similar without giving any recipients yet, do NOT call bulk_send AND do NOT call create_split (that is a completely different feature — a payment request, not a bulk send). Instead just reply in plain text: "There's no bulk payment form yet — just tell me who to pay and how much for each person, e.g. 'send 0.01 to alice.up.id and 0.02 to bob.up.id', and I'll open the confirmation for you."
+If the user asks to "open a bulk payment form" or similar without giving recipients yet, call open_bulk_form (NOT create_split, NOT bulk_send). After calling it, say: "I've opened the bulk payment form for you to fill in."
 When the user wants to send different (or equal) amounts to multiple people in ONE transaction (e.g. "send 0.01 to alice.up.id and 0.02 to bob.up.id", "pay everyone on this list"), call resolve_name for each .up.id recipient first, then call bulk_send with all recipients' resolved addresses and amounts.
 This is fundamentally different from a split: bulk_send actually sends real ETH out from the connected wallet to each recipient in one transaction. NEVER confuse this with create_split — a split REQUESTS money owed to the creator, bulk_send SENDS money out.
 After calling bulk_send, tell the user "I've opened a confirmation dialog for a bulk payment to N recipients — please review and sign in your wallet" and nothing more. Never claim the payment already happened.

@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { TxConfirmModal } from "./TxConfirmModal";
 import { SplitFormModal } from "./SplitFormModal";
 import { BulkSendModal } from "./BulkSendModal";
+import { BulkFormModal } from "./BulkFormModal";
 import { ScheduleForm } from "./ScheduleForm";
 
 interface Message {
@@ -94,6 +95,17 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
     recipients: { identifier: string; address: string; amountEth: string }[];
   }>({ isOpen: false, recipients: [] });
   const [bulkCompleted, setBulkCompleted] = useState(false);
+  const [bulkFormOpen, setBulkFormOpen] = useState(false);
+
+  const handleBulkFormConfirm = (recipients: { identifier: string; address: string; amountEth: string }[]) => {
+    setBulkFormOpen(false);
+    setBulkModal({ isOpen: true, recipients });
+  };
+
+  const handleBulkFormClose = () => {
+    setBulkFormOpen(false);
+    appendSystemMessage("❌ You cancelled the bulk payment form.");
+  };
 
   const handleBulkSuccess = (txHash: string) => {
     setBulkCompleted(true);
@@ -246,6 +258,9 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
       }
       if (action?.action === "open_bulk_send_modal") {
         setBulkModal({ isOpen: true, recipients: action.recipients });
+      }
+      if (action?.action === "open_bulk_form") {
+        setBulkFormOpen(true);
       }
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
@@ -439,6 +454,12 @@ const [scheduleCompleted, setScheduleCompleted] = useState(false);
         onClose={handleBulkModalClose}
         onSuccess={handleBulkSuccess}
         recipients={bulkModal.recipients}
+      />
+
+      <BulkFormModal
+        isOpen={bulkFormOpen}
+        onClose={handleBulkFormClose}
+        onConfirm={handleBulkFormConfirm}
       />
     </div>
   );
