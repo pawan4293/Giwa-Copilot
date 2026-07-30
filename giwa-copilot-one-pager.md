@@ -32,20 +32,18 @@ A single chat window that understands natural-language requests — "send 0.01 E
 
 ## 4. Architecture
 
-User (chat or direct UI)
-│
-▼
-Next.js frontend (wagmi + viem)
-│
-├── Groq API (tool-calling) ──► real API routes (never synthetic data)
-│
-├── Direct signed transactions ──► GIWA Sepolia RPC
-│
-└── Scheduler / BatchSend contracts (verified, on-chain)
-▲
-│ release() triggered every 2 min
-Upstash QStash cron ──► /api/cron-execute ──► Keeper wallet (gas only)
-
+```mermaid
+graph TD
+    A[User - chat or direct UI] --> B[Next.js frontend - wagmi + viem]
+    B --> C[Groq API - tool-calling]
+    C --> D[Real API routes - never synthetic data]
+    B --> E[Direct signed transactions]
+    E --> F[GIWA Sepolia RPC]
+    B --> G[Scheduler / BatchSend contracts - verified, on-chain]
+    H[Upstash QStash cron] --> I[/api/cron-execute]
+    I --> J[Keeper wallet - gas only]
+    J -.->|release triggered every 2 min| G
+```
 
 ## 5. Verified Contracts (GIWA Sepolia)
 
