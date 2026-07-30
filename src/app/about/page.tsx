@@ -26,7 +26,7 @@ const BUILT = [
   {
     icon: "⏱",
     title: "Trustless Recurring Scheduler",
-    desc: "Deployed Solidity contract: deposit with a separate first-release delay and repeat interval, release (keeper pattern), cancel with exact refund. User signs all fund-moving transactions client-side. One-time and multi-cycle recurring schedules both tested end-to-end.",
+    desc: "Deployed, source-verified Solidity contract: deposit with a separate first-release delay and repeat interval, release (keeper pattern), cancel with exact refund. User signs all fund-moving transactions client-side. One-time and multi-cycle recurring schedules both tested end-to-end.",
   },
   {
     icon: "⏲",
@@ -65,7 +65,8 @@ const NOT_BUILT = [
 ];
 
 const CONTRACTS = [
-  { label: "Scheduler (recurring payments)",  address: "0xc28787ABf5b0Ba0B6d7714cE496B32D71E846Aff" },
+  { label: "Scheduler (recurring payments) ✓ Verified",  address: "0xc28787ABf5b0Ba0B6d7714cE496B32D71E846Aff" },
+  { label: "BatchSend (bulk transfers) ✓ Verified", address: "0xcAb18E72C8617AebB8A4C7Cf3670d2A68EC66600" },
   { label: "DojangScroll (Verified Address)", address: "0xd5077b67dcb56caC8b270C7788FC3E6ee03F17B9" },
   { label: "EAS",                             address: "0x4200000000000000000000000000000000000021" },
   { label: "EASSchemaRegistry",               address: "0x4200000000000000000000000000000000000020" },
