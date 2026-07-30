@@ -40,7 +40,7 @@ graph TD
     B --> E[Direct signed transactions]
     E --> F[GIWA Sepolia RPC]
     B --> G[Scheduler / BatchSend contracts - verified, on-chain]
-    H[Upstash QStash cron] --> I[/api/cron-execute]
+    H[Upstash QStash cron] --> I["/api/cron-execute"]
     I --> J[Keeper wallet - gas only]
     J -.->|release triggered every 2 min| G
 ```
